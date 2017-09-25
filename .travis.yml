@@ -6,3 +6,6 @@ install:
   - npm install
 script:
   - npm run rebuild
+  - npm run standard
+  - npm run flow
+  - npm run test
