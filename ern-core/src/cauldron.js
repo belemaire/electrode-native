@@ -179,31 +179,9 @@ class Cauldron {
     }
   }
 
-  async addNativeBinary (
-    napDescriptor: NativeApplicationDescriptor,
-    binaryPath: string) : Promise<*> {
-    try {
-      this.throwIfPartialNapDescriptor(napDescriptor)
-      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
-      return this.cauldron.createNativeBinary(
-                napDescriptor.name, napDescriptor.platform, napDescriptor.version, binaryPath)
-    } catch (e) {
-      log.error(`[addNativeBinary] ${e}`)
-      throw e
-    }
-  }
-
-  async getNativeBinary (napDescriptor: NativeApplicationDescriptor) : Promise<*> {
-    try {
-      this.throwIfPartialNapDescriptor(napDescriptor)
-      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
-      return this.cauldron.getNativeBinary(
-        napDescriptor.name, napDescriptor.platform, napDescriptor.version)
-    } catch (e) {
-      log.error(`[getNativeBinary] ${e}`)
-      throw e
-    }
-  }
+  // ====================================================================================
+  // yarn.lock access
+  // ====================================================================================
 
   async hasYarnLock (napDescriptor: NativeApplicationDescriptor) : Promise<boolean> {
     try {
@@ -315,6 +293,108 @@ class Cauldron {
       }
     } catch (e) {
       log.error(`[addOrUpdateYarnLock] ${e}`)
+      throw e
+    }
+  }
+
+  // ====================================================================================
+  // Native application binaries access
+  // ====================================================================================
+
+  async hasNativeBinary (napDescriptor: NativeApplicationDescriptor) : Promise<boolean> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      return this.cauldron.hasNativeBinary(
+                napDescriptor.name, napDescriptor.platform, napDescriptor.version)
+    } catch (e) {
+      log.error(`[hasNativeBinary] ${e}`)
+      throw e
+    }
+  }
+
+  async addNativeBinary (
+    napDescriptor: NativeApplicationDescriptor,
+    nativeBinaryPath: string) : Promise<*> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      let nativeBinaryFile = await fileUtils.readFile(nativeBinaryPath)
+      return this.cauldron.addNativeBinary(
+                napDescriptor.name, napDescriptor.platform, napDescriptor.version, nativeBinaryFile)
+    } catch (e) {
+      log.error(`[addNativeBinary] ${e}`)
+      throw e
+    }
+  }
+
+  async getNativeVinary (napDescriptor: NativeApplicationDescriptor) : Promise<?Buffer> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      return this.cauldron.getNativeBinary(
+                napDescriptor.name, napDescriptor.platform, napDescriptor.version)
+    } catch (e) {
+      log.error(`[getNativeVinary] ${e}`)
+      throw e
+    }
+  }
+
+  async getPathToNativeBinary (napDescriptor: NativeApplicationDescriptor) : Promise<?string> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      return this.cauldron.getPathToNativeBinary(
+        napDescriptor.name, napDescriptor.platform, napDescriptor.version
+      )
+    } catch (e) {
+      log.error(`[getPathToNativeBinary] ${e}`)
+      throw e
+    }
+  }
+
+  async removeNativeBinary (napDescriptor: NativeApplicationDescriptor) : Promise<boolean> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      return this.cauldron.removeNativeBinary(
+                napDescriptor.name, napDescriptor.platform, napDescriptor.version)
+    } catch (e) {
+      log.error(`[removeNativeBinary] ${e}`)
+      throw e
+    }
+  }
+
+  async updateNativeBinary (
+    napDescriptor: NativeApplicationDescriptor,
+    nativeBinaryPath: string
+  ) : Promise<boolean> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      let nativeBinaryFile = await fileUtils.readFile(nativeBinaryPath)
+      return this.cauldron.updateNativeBinary(
+                napDescriptor.name, napDescriptor.platform, napDescriptor.version, nativeBinaryFile)
+    } catch (e) {
+      log.error(`[updateNativeBinary] ${e}`)
+      throw e
+    }
+  }
+
+  async addOrUpdateNativeBinary (
+    napDescriptor: NativeApplicationDescriptor,
+    nativeBinaryPath: string
+  ) : Promise<*> {
+    try {
+      this.throwIfPartialNapDescriptor(napDescriptor)
+      await this.throwIfNativeApplicationNotInCauldron(napDescriptor)
+      if (await this.hasNativeBinary(napDescriptor)) {
+        return this.updateNativeBinary(napDescriptor, nativeBinaryPath)
+      } else {
+        return this.addNativeBinary(napDescriptor, nativeBinaryPath)
+      }
+    } catch (e) {
+      log.error(`[addOrUpdateNativeBinary] ${e}`)
       throw e
     }
   }

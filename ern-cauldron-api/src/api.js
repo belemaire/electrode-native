@@ -4,7 +4,6 @@ import * as schemas from './schemas'
 import { Dependency } from 'ern-util'
 import {
   alreadyExists,
-  buildNativeBinaryFileName,
   buildReactNativeSourceMapFileName,
   checkNotFound,
   joiValidate,
@@ -46,16 +45,19 @@ export default class CauldronApi {
   async beginTransaction () {
     await this._db.beginTransaction()
     await this._yarnlockStore.beginTransaction()
+    await this._nativeBinariesStore.beginTransaction()
   }
 
   async discardTransaction () {
     await this._db.discardTransaction()
     await this._yarnlockStore.discardTransaction()
+    await this._nativeBinariesStore.discardTransaction()
   }
 
   async commitTransaction () {
     await this._db.commitTransaction()
     await this._yarnlockStore.commitTransaction()
+    await this._nativeBinariesStore.discardTransaction()
   }
 
   // =====================================================================================
@@ -434,30 +436,8 @@ export default class CauldronApi {
   }
 
   // =====================================================================================
-  // FILE OPERATIONS (TO DEPRECATE OR IMPROVE)
+  // FILE OPERATIONS (TO IMPROVE - DEDUP)
   // =====================================================================================
-
-  async getNativeBinary (
-    nativeApplicationName: string,
-    platformName: string,
-    versionName: string) {
-    const filename = buildNativeBinaryFileName(nativeApplicationName, platformName, versionName)
-    return this._nativeBinariesStore.getFile(filename)
-  }
-
-  async removeNativeBinary (
-    nativeApplicationName: string,
-    platformName: string,
-    versionName: string) {
-    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
-
-    if (version) {
-      const filename = buildNativeBinaryFileName(nativeApplicationName, platformName, versionName)
-      this._nativeBinariesStore.removeFile(filename)
-      version.binary = null
-      this.commit(`Remove binary of ${nativeApplicationName} ${platformName} ${versionName}`)
-    }
-  }
 
   async createSourceMap (
     nativeApplicationName: string,
@@ -484,19 +464,91 @@ export default class CauldronApi {
     return fileExists ? this._sourceMapStore.removeFile(filename) : false
   }
 
-  async createNativeBinary (
+  async hasNativeBinary (
+    nativeApplicationName: string,
+    platformName: string,
+    versionName: string
+  ) : Promise<boolean> {
+    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
+    return version ? version.binary !== null : false
+  }
+
+  async addNativeBinary (
     nativeApplicationName: string,
     platformName: string,
     versionName: string,
-    payload: any) {
+    binary: string | Buffer) : Promise<boolean> {
     const version = await this.getVersion(nativeApplicationName, platformName, versionName)
 
     if (version) {
-      const filename = buildNativeBinaryFileName(nativeApplicationName, platformName, versionName)
-      await this._nativeBinariesStore.storeFile(filename, payload)
-      version.binary = shasum(payload)
+      const filename = shasum(binary)
+      await this._nativeBinariesStore.storeFile(filename, binary)
+      version.binary = filename
       this.commit(`Add binary for ${nativeApplicationName} ${platformName} ${versionName}`)
+      return true
     }
+
+    return false
+  }
+
+  async getNativeBinary (
+    nativeApplicationName: string,
+    platformName: string,
+    versionName: string) : Promise<?Buffer> {
+    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
+
+    if (version && version.binary) {
+      return this._nativeBinariesStore.getFile(version.binary)
+    }
+  }
+
+  async getPathToNativeBinary (
+    nativeApplicationName: string,
+    platformName: string,
+    versionName: string
+  ) : Promise<?string> {
+    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
+
+    if (version && version.binary) {
+      return this._nativeBinariesStore.getPathToFile(version.binary)
+    }
+  }
+
+  async removeNativeBinary (
+    nativeApplicationName: string,
+    platformName: string,
+    versionName: string
+  ) : Promise<boolean> {
+    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
+
+    if (version && version.binary) {
+      if (await this._nativeBinariesStore.removeFile(version.binary)) {
+        version.binary = null
+        await this.commit(`Remove binary for ${nativeApplicationName} ${platformName} ${versionName}`)
+        return true
+      }
+    }
+
+    return false
+  }
+
+  async updateNativeBinary (
+    nativeApplicationName: string,
+    platformName: string,
+    versionName: string,
+    binary: string | Buffer
+  ) : Promise<boolean> {
+    const version = await this.getVersion(nativeApplicationName, platformName, versionName)
+
+    if (version && version.binary) {
+      await this._nativeBinariesStore.removeFile(version.binary)
+      const filename = shasum(binary)
+      await this._nativeBinariesStore.storeFile(filename, binary)
+      version.binary = filename
+      await this.commit(`Updated binary for ${nativeApplicationName} ${platformName} ${versionName}`)
+    }
+
+    return false
   }
 
   async hasYarnLock (
