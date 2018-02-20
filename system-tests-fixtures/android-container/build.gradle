@@ -18,7 +18,8 @@ allprojects {
         mavenLocal()
         jcenter()
         google()
-        mavenCentral()
+        mavenCentral()        
+        maven { url 'https://jitpack.io' }        
     }
 
     tasks.withType(JavaCompile) {
