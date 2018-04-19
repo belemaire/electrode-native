@@ -254,7 +254,8 @@ export default class AndroidGenerator implements ContainerGenerator {
           'compileStatement': `compile 'com.walmartlabs.ern:react-native:${reactNativePlugin.version}'`
         })
       }
-      const reactNativeCodePushPlugin = _.find(plugins, p => p.basePath === 'react-native-code-push')
+      const reactNativeCodePushPlugin = _.find(plugins,
+        p => p.basePath === 'react-native-code-push' || p.basePath === 'react-native-electrode-ota')
       if (reactNativeCodePushPlugin) {
         mustacheView.loadJsBundleFromCustomPath = true
       }

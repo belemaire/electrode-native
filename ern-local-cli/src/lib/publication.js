@@ -31,6 +31,8 @@ import fs from 'fs'
 import shell from 'shelljs'
 import * as constants from './constants'
 import semver from 'semver'
+import utils from './utils'
+import dirCompare from 'dir-compare'
 
 export function containsVersionMismatch (
   versions: Array<string>,
@@ -382,8 +384,9 @@ jsApiImpls: Array<PackagePath>, {
     const plugins = await cauldron.getNativeDependencies(napDescriptor)
     await cauldron.beginTransaction()
     const codePushPlugin = _.find(plugins, p => p.basePath === 'react-native-code-push')
-    if (!codePushPlugin) {
-      throw new Error('react-native-code-push plugin is not in native app !')
+    const electrodeOtaPlugin = _.find(plugins, p => p.basePath === 'react-native-electrode-ota')
+    if (!codePushPlugin && !electrodeOtaPlugin) {
+      throw new Error('react-native-code-push or react-native-electrode-ota plugin not in native app !')
     }
 
     const tmpWorkingDir = createTmpDir()
@@ -460,6 +463,13 @@ jsApiImpls: Array<PackagePath>, {
     const appName = await getCodePushAppName(napDescriptor)
     const targetVersionName = await getCodePushTargetVersionName(napDescriptor, deploymentName)
 
+    // TODO: Only do this if CodePush diff update is enabled
+    if (await cauldron.getCodePushEntry(napDescriptor, deploymentName)) {
+      await removeBundleAssetsThatAreAlreadyInBinary(napDescriptor, bundleOutputDirectory)
+    } else {
+      log.debug('CodePushing all assets as it is the first CodePush release for this descriptor/deploymentName')
+    }
+
     const codePushResponse: CodePushPackage = await spin('Releasing bundle through CodePush', codePushSdk.releaseReact(
       appName,
       deploymentName,
@@ -492,6 +502,32 @@ jsApiImpls: Array<PackagePath>, {
     }
     log.error(`performCodePushOtaUpdate {e}`)
     throw e
+  }
+}
+
+async function removeBundleAssetsThatAreAlreadyInBinary (
+  napDescriptor: NativeApplicationDescriptor,
+  bundleAssetsPath: string) : Promise<void> {
+  const cauldron = await coreUtils.getCauldronInstance()
+  if (await cauldron.hasBundle(napDescriptor)) {
+    const defaultBundleAndAssetsZip: Buffer = await cauldron.getBundle(napDescriptor)
+    const defaultBundleAndAssetsPath: string = createTmpDir()
+    await utils.unzip(defaultBundleAndAssetsZip, defaultBundleAndAssetsPath)
+    const assetsDiff = dirCompare.compareSync(defaultBundleAndAssetsPath, bundleAssetsPath, {compareContent: true})
+    for (const diff of assetsDiff.diffSet) {
+      if (diff.type2 === 'file') {
+        // Only care about file diffs
+        const pathToBundleFile = path.join(diff.path2, diff.name2)
+        if (diff.state === 'equal') {
+          log.debug(`[removeBundleAssetsThatAreAlreadyInBinary] Removing ${pathToBundleFile} asset from bundle as it is already present in target binary`)
+          shell.rm(pathToBundleFile)
+        } else if (diff.state === 'right') {
+          log.debug(`[removeBundleAssetsThatAreAlreadyInBinary] Keeping ${pathToBundleFile} asset as it is not present in target binary`)
+        } else if (diff.state === 'distinct') {
+          log.debug(`[removeBundleAssetsThatAreAlreadyInBinary] Keeping ${pathToBundleFile} asset as it was modified`)
+        }
+      }
+    }
   }
 }
 

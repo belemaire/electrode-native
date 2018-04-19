@@ -253,10 +253,11 @@ export async function generateMiniAppsComposite (
   await writeFile('.babelrc', JSON.stringify(compositeBabelRc, null, 2))
 
   const pathToCodePushNodeModuleDir = path.join(outDir, 'node_modules', 'react-native-code-push')
+  const pathToElectrodeOtaNodeModuleDir = path.join(outDir, 'node_modules', 'react-native-electrode-ota')
   const pathToReactNativeNodeModuleDir = path.join(outDir, 'node_modules', 'react-native')
   const pathToReactNativePackageJson = path.join(pathToReactNativeNodeModuleDir, 'package.json')
   // If code push plugin is present we need to do some additional work
-  if (fs.existsSync(pathToCodePushNodeModuleDir)) {
+  if (fs.existsSync(pathToCodePushNodeModuleDir) || fs.existsSync(pathToElectrodeOtaNodeModuleDir)) {
     const reactNativePackageJson = JSON.parse(fs.readFileSync(pathToReactNativePackageJson, 'utf8'))
 
     //
