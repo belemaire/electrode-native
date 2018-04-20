@@ -5,15 +5,13 @@ import {
   expect
 } from 'chai'
 import {
-  CauldronHelper,
-  utils
-} from 'ern-core'
-import {
   doesThrow,
   doesNotThrow
 } from 'ern-util-dev'
 import sinon from 'sinon'
-import Ensure from '../src/lib/Ensure'
+import CauldronHelper from '../src/CauldronHelper'
+import * as utils from '../src/utils'
+import Ensure from '../src/Ensure'
 import * as fixtures from './fixtures/common'
 const sandbox = sinon.createSandbox()
 

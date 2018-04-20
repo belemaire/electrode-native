@@ -56,7 +56,7 @@ describe('android.js', () => {
     it('runAndroid throws error with more than 2 running devices', async () => {
       execpStub.resolves(fixtures.getDeviceResult)
       try {
-        await android.runAndroid(fixtures.pkgName)
+        await android.runAndroid({ packageName: 'com.testpackage', activityName: 'MainActivity'})
       } catch (e) {
         expect(e.message).to.include('More than one device/emulator is running !')
       }

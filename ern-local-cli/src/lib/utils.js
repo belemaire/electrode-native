@@ -14,7 +14,8 @@ import {
   NativeApplicationDescriptor,
   spin,
   shell,
-  MavenUtils
+  MavenUtils,
+  Ensure
 } from 'ern-core'
 import {
   generateRunnerProject,
@@ -40,7 +41,6 @@ import utils from './utils'
 import _ from 'lodash'
 import inquirer from 'inquirer'
 import semver from 'semver'
-import Ensure from './Ensure'
 import ora from 'ora'
 import chalk from 'chalk'
 import fs from 'fs'

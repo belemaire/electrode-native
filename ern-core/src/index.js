@@ -38,6 +38,7 @@ import _CodePushSdk from './CodePushSdk'
 import * as _promptUtils from './promptUtils'
 import _createTmpDir from './createTmpDir'
 import * as _nativeDepenciesVersionResolution from './resolveNativeDependenciesVersions'
+import _Ensure from './Ensure'
 
 export const handleCopyDirective = _handleCopyDirective
 export const Platform = _Platform
@@ -75,6 +76,7 @@ export const CodePushSdk = _CodePushSdk
 export const promptUtils = _promptUtils
 export const createTmpDir = _createTmpDir
 export const nativeDepenciesVersionResolution = _nativeDepenciesVersionResolution
+export const Ensure = _Ensure
 
 export default ({
   handleCopyDirective: _handleCopyDirective,
@@ -112,7 +114,8 @@ export default ({
   CodePushSdk: _CodePushSdk,
   promptUtils: _promptUtils,
   createTmpDir: _createTmpDir,
-  nativeDepenciesVersionResolution: _nativeDepenciesVersionResolution
+  nativeDepenciesVersionResolution: _nativeDepenciesVersionResolution,
+  Ensure: _Ensure
 })
 
 export type {
