@@ -73,7 +73,6 @@
     "ignore": [
       "**/dist",
       "**/ern-api-gen/",
-      "**/flow-typed/",
       "**/test",
       "**/system-tests"
     ],
