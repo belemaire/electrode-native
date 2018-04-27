@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "allowJs": true, 
+    "baseUrl": ".",
+    "paths": {
+      "ern-api-gen": ["ern-api-gen/src"],
+      "ern-api-impl-gen": ["ern-api-impl-gen/src"],
+      "ern-cauldron-api": ["ern-cauldron-api/src"],
+      "ern-container-gen": ["ern-container-gen/src"],
+      "ern-core": ["ern-core/src"],
+      "ern-local-cli": ["ern-local-cli/src"],
+      "ern-runner-gen": ["ern-runner-gen/src"],
+      "ern-util-dev": ["ern-util-dev/src"]
+    }
+  }
+}

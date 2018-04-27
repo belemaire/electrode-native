@@ -18,7 +18,7 @@ export class ErnConfig {
             : ERN_RC_GLOBAL_FILE_PATH
   }
 
-  getValue (key: string, defaultValue: any) : any {
+  getValue (key: string, defaultValue?: any) : any {
     return this.obj[key] !== undefined ? this.obj[key] : defaultValue
   }
 
