@@ -26,6 +26,7 @@ import * as _childProcess from './childProcess'
 import * as _ios from './ios'
 import * as _mustacheUtils from './mustacheUtils'
 import _ColoredLog from './coloredLog'
+import _log from './log'
 import _ReactNativeCli from './ReactNativeCli'
 import _required from './required'
 import _tagOneLine from './tagoneline'
@@ -75,6 +76,7 @@ export const CodePushSdk = _CodePushSdk
 export const promptUtils = _promptUtils
 export const createTmpDir = _createTmpDir
 export const nativeDepenciesVersionResolution = _nativeDepenciesVersionResolution
+export const log = _log
 
 export default ({
   handleCopyDirective: _handleCopyDirective,
@@ -100,6 +102,7 @@ export default ({
   childProcess: _childProcess,
   ios: _ios,
   ColoredLog: _ColoredLog,
+  log: _log,
   ReactNativeCli: _ReactNativeCli,
   required: _required,
   tagOneLine: _tagOneLine,
@@ -115,12 +118,12 @@ export default ({
   nativeDepenciesVersionResolution: _nativeDepenciesVersionResolution
 })
 
-export type {
+export {
   CodePushPackageInfo,
   CodePushPackage,
   CodePushInitConfig
 } from './CodePushSdk'
 
-export type {
+export {
   BundlingResult
 } from './ReactNativeCli'

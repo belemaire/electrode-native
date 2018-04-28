@@ -1,6 +1,6 @@
 // @flow
 
-import fs from 'fs'
+import * as fs from 'fs'
 import shell from './shell'
 
 /**
@@ -30,9 +30,9 @@ export async function writeFile (
   filename: string,
   data: string) {
   return new Promise((resolve, reject) => {
-    fs.writeFile(filename, data, (err, res) => {
+    fs.writeFile(filename, data, (err) => {
       if (err) reject(err)
-      else resolve(res)
+      else resolve()
     })
   })
 }
@@ -43,5 +43,5 @@ export async function writeFile (
  * @param path
  */
 export function chmodr (fileMode: string, path: string) {
-  shell.chmod('-R', fileMode, path)
+  shell.chmod(fileMode, path)
 }

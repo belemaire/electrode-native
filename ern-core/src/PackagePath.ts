@@ -53,7 +53,7 @@ export default class PackagePath {
     return new PackagePath(path)
   }
 
-  get version () : ?string {
+  get version () : string|void {
     return this._version
   }
 

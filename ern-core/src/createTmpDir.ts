@@ -1,7 +1,7 @@
 // @flow
 
 import tmp from 'tmp'
-import config from './config.js'
+import config from './config'
 
 export default function () : string {
   const tmpDir = config.getValue('tmp-dir')

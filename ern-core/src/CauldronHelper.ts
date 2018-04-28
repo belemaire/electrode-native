@@ -4,8 +4,8 @@ import PackagePath from './PackagePath'
 import NativeApplicationDescriptor from './NativeApplicationDescriptor'
 import * as fileUtils from './fileUtil'
 import * as promptUtils from './promptUtils'
-import _ from 'lodash'
-import type {
+import * as _ from 'lodash'
+import {
   CauldronApi,
   CauldronCodePushMetadata,
   CauldronCodePushEntry
@@ -496,7 +496,7 @@ export default class CauldronHelper {
     return this.getConfigForKey(napDescriptor, 'containerGenerator')
   }
 
-  async getManifestConfig () : Promise<?Object> {
+  async getManifestConfig () : Promise<?any> {
     const config = await this.cauldron.getConfig()
     return config && config.manifest
   }

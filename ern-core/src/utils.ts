@@ -6,19 +6,20 @@ import {
 import config from './config'
 import PackagePath from './PackagePath'
 import gitCli from './gitCli'
-import http from 'http'
+import * as http from 'http'
 import camelCase from 'lodash/camelCase'
 import _ from 'lodash'
 import manifest from './Manifest'
-import * as ModuleTypes from './ModuleTypes'
-import path from 'path'
-import fs from 'fs'
+import * as ModuleType from './ModuleTypes'
+import * as path from 'path'
+import * as fs from 'fs'
 import Platform from './Platform'
 import CauldronHelper from './CauldronHelper'
 import CauldronCli, {
   getCurrentSchemaVersion
 } from 'ern-cauldron-api'
 import semver from 'semver'
+import log from './log'
 
 const gitDirectoryRe = /.*\/(.*).git/
 
@@ -52,7 +53,7 @@ export async function isPublishedToNpm (pkg: string | PackagePath): Promise<bool
   return false
 }
 
-export async function httpGet (url: string): Promise<http.IncomingMessage> {
+export async function httpGet (url: string): Promise<any> {
   return new Promise((resolve, reject) => {
     http.get(url, res => {
       resolve(res)
@@ -89,12 +90,12 @@ export function splitCamelCaseString (camelCaseString: string): Array<string> {
 export function getDefaultPackageNameForCamelCaseString (moduleName: string, moduleType?: string): string {
   let splitArray = splitCamelCaseString(moduleName)
   switch (moduleType) {
-    case ModuleTypes.MINIAPP:
+    case ModuleType.MINIAPP:
       return _.filter(splitArray, token => !['mini', 'app'].includes(token)).join('-')
-    case ModuleTypes.API:
+    case ModuleType.API:
       return _.filter(splitArray, token => !['api'].includes(token)).join('-')
-    case ModuleTypes.JS_API_IMPL:
-    case ModuleTypes.NATIVE_API_IMPL:
+    case ModuleType.JS_API_IMPL:
+    case ModuleType.NATIVE_API_IMPL:
       return _.filter(splitArray, token => !['api', 'impl'].includes(token)).join('-')
     default:
       return splitArray.join('-')
@@ -104,13 +105,13 @@ export function getDefaultPackageNameForCamelCaseString (moduleName: string, mod
 export function getDefaultPackageNameForModule (moduleName: string, moduleType: string): string {
   const basePackageName = getDefaultPackageNameForCamelCaseString(moduleName, moduleType)
   switch (moduleType) {
-    case ModuleTypes.MINIAPP:
+    case ModuleType.MINIAPP:
       return basePackageName.concat('-miniapp')
-    case ModuleTypes.API:
+    case ModuleType.API:
       return basePackageName.concat('-api')
-    case ModuleTypes.JS_API_IMPL:
+    case ModuleType.JS_API_IMPL:
       return basePackageName.concat('-api-impl-js')
-    case ModuleTypes.NATIVE_API_IMPL:
+    case ModuleType.NATIVE_API_IMPL:
       return basePackageName.concat('-api-impl-native')
     default:
       throw new Error(`Unsupported module type : ${moduleType}`)
@@ -135,7 +136,7 @@ export async function isDependencyApi (dependencyName: string): Promise<boolean>
     result =
       depInfo && depInfo.type === 'error'
         ? false
-        : depInfo.data && ModuleTypes.API === depInfo.data.moduleType
+        : depInfo.data && ModuleType.API === depInfo.data.moduleType
   } catch (e) {
     log.debug(e)
     return false
@@ -150,7 +151,7 @@ export async function isDependencyApi (dependencyName: string): Promise<boolean>
  * @param type: checks to see if a dependency is of a specific type(js|native) as well
  * @returns {Promise.<boolean>}
  */
-export async function isDependencyApiImpl (dependencyName: (string | PackagePath), forceYanInfo?: boolean, type?: ModuleTypes): Promise<boolean> {
+export async function isDependencyApiImpl (dependencyName: (string | PackagePath), forceYanInfo?: boolean, type?: string): Promise<boolean> {
   if (dependencyName instanceof PackagePath) {
     dependencyName = dependencyName.toString()
   }
@@ -159,7 +160,7 @@ export async function isDependencyApiImpl (dependencyName: (string | PackagePath
     return true
   }
 
-  const modulesTypes = type ? [type] : [ModuleTypes.NATIVE_API_IMPL, ModuleTypes.JS_API_IMPL]
+  const modulesTypes = type ? [type] : [ModuleType.NATIVE_API_IMPL, ModuleType.JS_API_IMPL]
   let result
   try {
     const depInfo = await yarn.info(PackagePath.fromString(dependencyName), {field: 'ern 2> /dev/null', json: true})
@@ -176,11 +177,11 @@ export async function isDependencyApiImpl (dependencyName: (string | PackagePath
 }
 
 export async function isDependencyJsApiImpl (dependency: (string | PackagePath)): Promise<boolean> {
-  return isDependencyApiImpl(dependency, true, ModuleTypes.JS_API_IMPL)
+  return isDependencyApiImpl(dependency, true, ModuleType.JS_API_IMPL)
 }
 
 export async function isDependencyNativeApiImpl (dependency: (string | PackagePath)): Promise<boolean> {
-  return isDependencyApiImpl(dependency, true, ModuleTypes.NATIVE_API_IMPL)
+  return isDependencyApiImpl(dependency, true, ModuleType.NATIVE_API_IMPL)
 }
 
 /**
@@ -323,7 +324,7 @@ export async function getCauldronInstance ({
       const cauldronRepoUrl = cauldronRepositories[cauldronRepoInUse]
       const cauldronRepoBranchReResult = /#(.+)$/.exec(cauldronRepoUrl)
       const cauldronRepoUrlWithoutBranch = cauldronRepoUrl.replace(/#(.+)$/, '')
-      const cauldronCli = new CauldronCli(
+      const cauldronCli = CauldronCli(
         cauldronRepoUrlWithoutBranch,
         path.join(Platform.rootDirectory, 'cauldron'),
         cauldronRepoBranchReResult ? cauldronRepoBranchReResult[1] : 'master')
@@ -348,7 +349,7 @@ You can also switch to an older version of the platform which supports this Caul
   return Promise.resolve(currentCauldronHelperInstance)
 }
 
-export function logErrorAndExitProcess (e: Error, code?: number = 1) {
+export function logErrorAndExitProcess (e: Error, code: number = 1) {
   log.error(`An error occurred: ${e.message}`)
   log.debug(e.stack)
   process.exit(code)

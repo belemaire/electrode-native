@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "allowJs": true, 
+    "allowJs": true,
+    "lib": [
+      "es7"
+    ],
     "baseUrl": ".",
     "paths": {
       "ern-api-gen": ["ern-api-gen/src"],
@@ -13,5 +16,8 @@
       "ern-runner-gen": ["ern-runner-gen/src"],
       "ern-util-dev": ["ern-util-dev/src"]
     }
+  },
+  "typeAcquisition": {
+    "enable": true
   }
 }

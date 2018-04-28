@@ -2,6 +2,7 @@
 
 import {
   PackagePath,
+  log,
   mustacheUtils,
   shell,
   fileUtils,

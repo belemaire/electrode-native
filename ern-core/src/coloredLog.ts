@@ -3,9 +3,15 @@
 import chalk from 'chalk'
 
 export default class ColoredLog {
-  _log: Object
+  _log: any
 
   constructor (level: string = 'info') {
+    this._log = require('console-log-level')({
+      level
+    })
+  }
+
+  setLogLevel (level: string) {
     this._log = require('console-log-level')({
       level
     })

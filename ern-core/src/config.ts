@@ -1,8 +1,8 @@
 // @flow
 
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 const ERN_RC_GLOBAL_FILE_PATH = path.join(os.homedir(), '.ern', '.ernrc')
 const ERN_RC_LOCAL_FILE_PATH = path.join(process.cwd(), '.ernrc')

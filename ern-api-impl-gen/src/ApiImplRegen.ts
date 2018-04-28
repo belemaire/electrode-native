@@ -1,7 +1,10 @@
 // @flow
 
 import ApiImplGen from './generators/ApiImplGen'
-import { PackagePath } from 'ern-core'
+import { 
+  log,
+  PackagePath 
+} from 'ern-core'
 
 export default async function regenerateApiImpl
   ({

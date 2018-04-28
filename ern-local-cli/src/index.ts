@@ -1,9 +1,8 @@
 // @flow
 
-import './lib/log-noop.js'
 import {
   Platform,
-  ColoredLog,
+  log,
   config as ernConfig,
   shell
 } from 'ern-core'
@@ -45,8 +44,9 @@ function showVersion () {
 // ==============================================================================
 export default function run () {
   const logLevel = process.env['ERN_LOG_LEVEL'] ? process.env['ERN_LOG_LEVEL'] : ernConfig.getValue('logLevel', 'info')
-  global.log = new ColoredLog(logLevel)
-  global.ernLogLevel = logLevel
+  log.setLogLevel(logLevel)
+  //global.log = new ColoredLog(logLevel)
+  //global.ernLogLevel = logLevel
   shell.config.fatal = true
   shell.config.verbose = (logLevel === 'trace')
 

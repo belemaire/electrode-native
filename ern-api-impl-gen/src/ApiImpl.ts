@@ -9,7 +9,8 @@ import {
   fileUtils,
   ModuleTypes,
   yarn,
-  Platform
+  Platform,
+  log
 } from 'ern-core'
 import path from 'path'
 import ApiImplGen from './generators/ApiImplGen'

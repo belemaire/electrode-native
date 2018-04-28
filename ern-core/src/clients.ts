@@ -2,8 +2,8 @@
 
 import ReactNativeCli from './ReactNativeCli'
 import YarnCli from './YarnCli'
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 
 export const yarn = new YarnCli(getBinaryPath('yarn'))
 export const reactnative = new ReactNativeCli(getBinaryPath('react-native'))

@@ -4,7 +4,8 @@ import {
   spin,
   PackagePath,
   shell,
-  yarn
+  yarn,
+  log
 } from 'ern-core'
 import {
   ApiGenUtils

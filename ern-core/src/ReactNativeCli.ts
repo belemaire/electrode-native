@@ -1,8 +1,8 @@
 // @flow
 
 import * as fileUtils from './fileUtil'
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 import shell from './shell'
 import spin from './spin'
 import createTmpDir from './createTmpDir'
@@ -10,6 +10,7 @@ import {
   execp,
   spawnp
 } from './childProcess'
+import log from './log'
 const fetch = require('node-fetch')
 
 export type BundlingResult = {
@@ -24,7 +25,7 @@ export type BundlingResult = {
 }
 
 export default class ReactNativeCli {
-  _binaryPath: ?string
+  _binaryPath: string|void
 
   constructor (binaryPath?: string) {
     this._binaryPath = binaryPath

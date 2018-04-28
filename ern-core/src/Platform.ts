@@ -2,13 +2,14 @@
 
 import config from './config'
 import shell from './shell'
+import log from './log'
 import {
   execSync
 } from 'child_process'
 
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 const HOME_DIRECTORY = os.homedir()
 // Name of ern local client NPM package

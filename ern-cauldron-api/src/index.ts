@@ -21,7 +21,8 @@ export const CauldronApi = _CauldronApi
 export const EphemeralFileStore = _EphemeralFileStore
 export const InMemoryDocumentStore = _InMemoryDocumentStore
 
-export type {
+
+export {
   CauldronCodePushMetadata,
   CauldronCodePushEntry
 } from './FlowTypes'

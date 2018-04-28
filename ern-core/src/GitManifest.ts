@@ -4,10 +4,11 @@ import PackagePath from './PackagePath'
 import shell from './shell'
 import gitCli from './gitCli'
 import _ from 'lodash'
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 import semver from 'semver'
 import Platform from './Platform'
+import log from './log'
 
 const manifestFileName = 'manifest.json'
 const pluginConfigFileName = 'config.json'
@@ -98,7 +99,7 @@ export default class GitManifest {
     return this._cachedManifest
   }
 
-  async getManifestData (platformVersion: string) : Promise<?Object> {
+  async getManifestData (platformVersion: string) : Promise<any> {
     return _.find(await this.getManifest(), m => semver.satisfies(platformVersion, m.platformVersion))
   }
 
@@ -124,7 +125,7 @@ export default class GitManifest {
 
   async getPluginConfigurationPath (
     plugin: PackagePath,
-    platformVersion: string = Platform.currentVersion) : Promise<?string> {
+    platformVersion: string = Platform.currentVersion) : Promise<string|void> {
     let result = await this._getPluginConfigurationPath(plugin, platformVersion)
     if (!result) {
       result = await this._getPluginConfigurationPathLegacy(plugin, platformVersion)
@@ -134,7 +135,7 @@ export default class GitManifest {
 
   async _getPluginConfigurationPath (
     plugin: PackagePath,
-    platformVersion: string = Platform.currentVersion) : Promise<?string> {
+    platformVersion: string = Platform.currentVersion) : Promise<string|void> {
     await this.syncIfNeeded()
     const versionRe = /_v(.+)\+/
     const scopeNameRe = /^(@.+)\/(.+)$/
@@ -188,7 +189,7 @@ export default class GitManifest {
   // -- To be deprecated --
   async _getPluginConfigurationPathLegacy (
     plugin: PackagePath,
-    platformVersion: string = Platform.currentVersion) : Promise<?string> {
+    platformVersion: string = Platform.currentVersion) : Promise<string|void> {
     await this.syncIfNeeded()
     const versionRe = /_v(.+)\+/
     const orderedPluginsConfigurationDirectories = this.getPluginsConfigurationDirectories(platformVersion)

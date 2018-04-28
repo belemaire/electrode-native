@@ -2,13 +2,14 @@
 
 import createTmpDir from './createTmpDir'
 import shell from './shell'
-import path from 'path'
-import fs from 'fs'
+import * as path from 'path'
+import * as fs from 'fs'
 import PackagePath from './PackagePath'
 import { execp } from './childProcess'
+import log from './log'
 
 export default class YarnCli {
-  _binaryPath: ?string
+  _binaryPath: string|void
 
   constructor (binaryPath?: string) {
     this._binaryPath = binaryPath

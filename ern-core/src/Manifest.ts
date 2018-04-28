@@ -2,18 +2,19 @@
 
 import PackagePath from './PackagePath'
 import shell from './shell'
-import path from 'path'
+import * as path from 'path'
 import Platform from './Platform'
 import GitManifest from './GitManifest'
 import Mustache from 'mustache'
 import _ from 'lodash'
-import fs from 'fs'
+import * as fs from 'fs'
 import {
   isDependencyApi,
   isDependencyApiImpl,
   getCauldronInstance
 } from './utils'
 import config from './config'
+import log from './log'
 
 export type PluginConfig = {
   android: Object,
@@ -64,7 +65,7 @@ export class Manifest {
 
   async getManifestData (platformVersion: string) {
     await this.initOverrideManifest()
-    let manifestData = {}
+    let manifestData : any = {} 
     if (this._overrideManifest && this._manifestOverrideType === 'partial') {
       // Merge both manifests. If a dependency exists at two different versions in both
       // manifest, the ovveride will take precedence for the version
@@ -102,12 +103,12 @@ export class Manifest {
       : []
   }
 
-  async getNativeDependency (dependency: PackagePath, platformVersion: string = Platform.currentVersion) : Promise<?PackagePath> {
+  async getNativeDependency (dependency: PackagePath, platformVersion: string = Platform.currentVersion) : Promise<PackagePath|void> {
     const nativeDependencies = await this.getNativeDependencies(platformVersion)
     return _.find(nativeDependencies, d => (d.basePath === dependency.basePath))
   }
 
-  async getJsDependency (dependency: PackagePath, platformVersion: string = Platform.currentVersion) : Promise<?PackagePath> {
+  async getJsDependency (dependency: PackagePath, platformVersion: string = Platform.currentVersion) : Promise<PackagePath|void> {
     const jsDependencies = await this.getJsDependencies(platformVersion)
     return _.find(jsDependencies, d => (d.basePath === dependency.basePath))
   }
@@ -122,7 +123,7 @@ export class Manifest {
 
   async getPluginConfigPath (
     plugin: PackagePath,
-    platformVersion: string) : Promise<?string> {
+    platformVersion: string) : Promise<string|void> {
     let pluginConfigPath
     if (this._overrideManifest && this._manifestOverrideType === 'partial') {
       pluginConfigPath = await this._overrideManifest.getPluginConfigurationPath(plugin, platformVersion)
@@ -153,7 +154,7 @@ export class Manifest {
       throw new Error(`There is no configuration for ${plugin.basePath} plugin in Manifest matching platform version ${platformVersion}`)
     }
 
-    let result = {}
+    let result: any = {}
     let configFile = await fs.readFileSync(path.join(pluginConfigPath, pluginConfigFileName), 'utf-8')
     configFile = Mustache.render(configFile, { projectName })
     result = JSON.parse(configFile)
@@ -199,7 +200,7 @@ export class Manifest {
 
   addOriginPropertyToConfigIfMissing (
     plugin: PackagePath,
-    config: Object) : Object {
+    config: any) : any {
     if (!config.origin) {
       if (npmScopeModuleRe.test(plugin.basePath)) {
         config.origin = {
@@ -221,7 +222,7 @@ export class Manifest {
 
   addOriginVersionPropertyToConfigIfMissing (
     plugin: PackagePath,
-    config: Object) : Object {
+    config: any) : any {
     if (config.origin && !config.origin.version) {
       config.origin.version = plugin.version
     }
@@ -253,7 +254,7 @@ export class Manifest {
     return result
   }
 
-  getApiPluginDefaultConfig (projectName?: string = 'UNKNOWN') : PluginConfig {
+  getApiPluginDefaultConfig (projectName: string = 'UNKNOWN') : PluginConfig {
     return {
       android: {
         root: 'android',
@@ -285,7 +286,7 @@ export class Manifest {
     }
   }
 
-  getApiImplPluginDefaultConfig (projectName?: string = 'UNKNOWN') : PluginConfig {
+  getApiImplPluginDefaultConfig (projectName: string = 'UNKNOWN') : PluginConfig {
     return {
       android: {
         root: 'android',

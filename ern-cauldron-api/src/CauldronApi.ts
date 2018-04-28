@@ -10,8 +10,8 @@ import {
   joiValidate,
   shasum
 } from './util'
-import _ from 'lodash'
-import type {
+import * as _ from 'lodash'
+import {
   CauldronCodePushEntry,
   CauldronNativeApp,
   CauldronNativeAppPlatform,
@@ -42,7 +42,7 @@ export default class CauldronApi {
     return this._db.commit(message)
   }
 
-  async getCauldron () : Promise<Object> {
+  async getCauldron () : Promise<any> {
     return this._db.getCauldron()
   }
 
