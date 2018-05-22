@@ -1,25 +1,29 @@
 {
   "compilerOptions": {
     "target": "es2015",
+    "rootDir": "./src",
+    "outDir": "dist",
     "lib": [
       "es2017",
       "dom"
     ],
-    "baseUrl": ".",
-    "paths": {
-      "ern-*":["ern-*/src"]
-    },
+    "jsx": "react",
     "typeRoots": [
       "node_modules/@types"
-    ],
-    "module": "commonjs",
+    ],"module": "commonjs",
     "moduleResolution": "node",
     "inlineSourceMap": true,
     "allowJs": true,
     "esModuleInterop": true,
-    "strictNullChecks": true,
-    "jsx": "react"
+    "strictNullChecks": true
   },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "dist"
+  ],
   "typeAcquisition": {
     "enable": true
   }

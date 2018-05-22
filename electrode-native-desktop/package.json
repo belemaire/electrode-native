@@ -1,0 +1,86 @@
+{
+  "author": "Walmart Labs",
+  "name": "electrode-native-desktop",
+  "version": "1000.0.0",
+  "description": "Electrode Native Desktop Client",
+  "main": "dist/main.js",
+  "homepage": "http://www.electrode.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/electrode-io/electrode-native.git"
+  },
+  "bugs": {
+    "url": "https://github.com/electrode-io/electrode-native/issues"
+  },
+  "keywords": [
+    "electrode",
+    "ern",
+    "react-native",
+    "UI",
+    "node",
+    "android",
+    "ios"
+  ],
+  "build": {
+    "productName": "Electrode Native UI",
+    "appId": "com.walmartlabs.ern.ui",
+    "copyright": "Copyright © 2018 Walmart Labs"
+  },
+  "contributors": [
+    {
+      "name": "Benoit Lemaire",
+      "email": "blemaire@walmartlabs.com"
+    },
+    {
+      "name": "Bharath Marulasiddappa",
+      "email": "BMarulasiddappa@walmartlabs.com"
+    },
+    {
+      "name": "Deepu Ganapathiyadan",
+      "email": "DGanapathiyadan@walmartlabs.com"
+    },
+    {
+      "name": "Krunal Shah",
+      "email": "KShah1@walmartlabs.com"
+    },
+    {
+      "name": "Weijie Li",
+      "email": "WLi@walmartlabs.com"
+    }
+  ],"scripts": {
+    "start": "yarn ts-node fuse"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@material-ui/core": "^1.1.0",
+    "@material-ui/icons": "^1.1.0",
+    "@types/react": "^16.3.14",
+    "@types/react-dom": "^16.0.5",
+    "electron-is-dev": "^0.3.0",
+    "electron-log": "^2.2.14",
+    "electron-store": "^1.3.0",
+    "prop-types": "^15.6.1",
+    "react": "^16.4.0",
+    "react-dom": "^16.4.0",
+    "react-router": "^4.2.0",
+    "react-redux": "^5.0.7",
+    "react-router-redux": "^4.0.8",
+    "redux": "^3.7.2",
+    "redux-observable": "1.0.0-alpha.2",
+    "rxjs": "^6.2.0",
+    "rxjs-compat": "^6.2.0",
+    "mdi-material-ui": "^5.1.0"
+  },
+  "devDependencies": {
+    "electron": "^2.0.2",
+    "electron-builder": "^20.15.1",
+    "electron-debug": "^2.0.0",
+    "electron-devtools-installer": "^2.2.4",
+    "fuse-box": "^3.2.2",
+    "typescript": "^2.8.3",
+    "ts-node": "^6.0.5"
+  },
+  "engines": {
+    "node": ">=8.2"
+  }
+}

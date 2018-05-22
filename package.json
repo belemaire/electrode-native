@@ -22,7 +22,8 @@
     "setup-dev": "node setup-dev.js",
     "test": "yarn test:unit && yarn test:system",
     "test:system": "node system-tests/system-tests",
-    "test:unit": "lerna run test"
+    "test:unit": "lerna run test",
+    "ui:dev": "lerna run build && yarn ts-node electrode-native-desktop/fuse"
   },
   "workspaces": [
     "./ern-*"

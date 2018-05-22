@@ -21,12 +21,23 @@ function getBinaryPath(binaryName: string): string {
     '.bin',
     binaryName
   )
+  const devPath = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    'node_modules',
+    '.bin',
+    binaryName
+  )
   if (fs.existsSync(pathWhenInstalledWithYarn)) {
     return pathWhenInstalledWithYarn
   } else if (fs.existsSync(pathWhenInstalledWithNpm)) {
     return pathWhenInstalledWithNpm
+  } else if (fs.existsSync(devPath)) {
+    return devPath
   }
   throw new Error(
-    `Could not find ${binaryName} in ${pathWhenInstalledWithYarn} nor in ${pathWhenInstalledWithNpm}`
+    `Could not find ${binaryName} in ${pathWhenInstalledWithYarn} nor in ${pathWhenInstalledWithNpm} nor in ${devPath}`
   )
 }

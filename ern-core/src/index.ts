@@ -70,6 +70,10 @@ export { ErnBinaryStore } from './ErnBinaryStore'
 export const nativeDepenciesVersionResolution = _nativeDepenciesVersionResolution
 export { getPackagePathsDiffs } from './getPackagePathsDiffs'
 
+export default {
+  config: _config,
+}
+
 export {
   CodePushPackageInfo,
   CodePushPackage,
