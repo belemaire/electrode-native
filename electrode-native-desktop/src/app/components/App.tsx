@@ -7,19 +7,21 @@ import { NativeAppList } from './NativeAppList'
 import CauldronSelect from './CauldronSelect'
 import { getNativeApps } from '../actions'
 import { connect } from 'react-redux'
+import ReactMarkdown from 'react-markdown'
+import fs from 'fs'
 
-class App extends React.Component<
-  {
-    nativeApps: any
-    getNativeApps: any
-    currentCauldron: string
-    cauldrons: { [key: string]: string }
-  },
-  {}
-> {
+export interface AppProps {
+  nativeApps: any
+  getNativeApps: any
+  currentCauldron: string
+  cauldrons: { [key: string]: string }
+}
+class App extends React.Component<AppProps,{}> {
   public render() {
+    const input = fs.readFileSync('/Users/blemair/Code/electrode-native/ern-container-publisher-git/README.md').toString()
     return (
       <React.Fragment>
+        <ReactMarkdown source={input}/>
         <Button
           variant="raised"
           color="primary"
