@@ -16,12 +16,10 @@ export interface AppProps {
   currentCauldron: string
   cauldrons: { [key: string]: string }
 }
-class App extends React.Component<AppProps,{}> {
+class App extends React.Component<AppProps, {}> {
   public render() {
-    const input = fs.readFileSync('/Users/blemair/Code/electrode-native/ern-container-publisher-git/README.md').toString()
     return (
       <React.Fragment>
-        <ReactMarkdown source={input}/>
         <Button
           variant="raised"
           color="primary"
@@ -45,4 +43,7 @@ const mapStateToProps = (state: any) => ({
   nativeApps: state.nativeApps,
 })
 
-export default connect(mapStateToProps, { getNativeApps })(App)
+export default connect(
+  mapStateToProps,
+  { getNativeApps }
+)(App)
