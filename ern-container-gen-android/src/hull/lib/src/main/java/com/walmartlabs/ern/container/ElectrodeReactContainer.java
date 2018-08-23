@@ -162,12 +162,12 @@ public class ElectrodeReactContainer {
             {{/plugins}}
             sReactPackages.removeAll(Collections.singleton((ReactPackage)null));
 
-            // Load bundle now (engine might offer lazy loading later down the road)
-            getReactInstanceManager().createReactContextInBackground();
-
             {{#apiImplementations}}
             {{apiName}}ApiController.register({{#hasConfig}}{{apiVariableName}}ApiConfig{{/hasConfig}}{{^hasConfig}}null{{/hasConfig}});
             {{/apiImplementations}}
+
+            // Load bundle now (engine might offer lazy loading later down the road)
+            getReactInstanceManager().createReactContextInBackground();
 
             Log.d(TAG, "ELECTRODE REACT-NATIVE ENGINE INITIALIZED\n" + reactContainerConfig.toString());
         } else {
