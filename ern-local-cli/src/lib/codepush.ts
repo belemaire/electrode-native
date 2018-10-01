@@ -11,6 +11,7 @@ import {
   log,
   MiniApp,
   kax,
+  fileUtils,
 } from 'ern-core'
 import { getActiveCauldron } from 'ern-cauldron-api'
 import * as compatibility from './compatibility'
@@ -471,20 +472,14 @@ export function getCodePushInitConfig(): CodePushInitConfig {
     process.env.LOCALAPPDATA || process.env.HOME || '',
     '.code-push.config'
   )
-  let codePushInitConfig: CodePushInitConfig
-  if (fs.existsSync(codePushConfigFilePath)) {
-    codePushInitConfig = JSON.parse(
-      fs.readFileSync(codePushConfigFilePath, 'utf-8')
-    )
-  } else {
-    codePushInitConfig = {
-      accessKey: config.getValue('codePushAccessKey'),
-      customHeaders: config.getValue('codePushCustomHeaders'),
-      customServerUrl: config.getValue('codePushCustomServerUrl'),
-      proxy: config.getValue('codePushproxy'),
-    }
-  }
-  return codePushInitConfig
+  return fs.existsSync(codePushConfigFilePath)
+    ? fileUtils.readJSONSync(codePushConfigFilePath)
+    : {
+        accessKey: config.getValue('codePushAccessKey'),
+        customHeaders: config.getValue('codePushCustomHeaders'),
+        customServerUrl: config.getValue('codePushCustomServerUrl'),
+        proxy: config.getValue('codePushproxy'),
+      }
 }
 
 export function getCodePushSdk() {
