@@ -98,10 +98,10 @@ export default class GitManifest {
     return this.cachedManifest
   }
 
-  public async getManifestData(platformVersion: string): Promise<any | void> {
-    return _.find(await this.getManifest(), m =>
-      semver.satisfies(platformVersion, m.platformVersion)
-    )
+  public async getManifestData(id: string): Promise<any | void> {
+    // If no manifest id is provided, fallback to original mecanism of
+    // relying on platform version
+    return _.find(await this.getManifest(), m => id === m.id)
   }
 
   /**

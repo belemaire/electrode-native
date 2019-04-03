@@ -100,12 +100,14 @@ export class MiniApp {
     miniAppName: string,
     packageName: string,
     {
+      manifestId,
       platformVersion = Platform.currentVersion,
       scope,
     }: {
-      platformVersion: string
+      manifestId?: string
+      platformVersion?: string
       scope?: string
-    }
+    } = {}
   ) {
     if (fs.existsSync(path.join('node_modules', 'react-native'))) {
       throw new Error(
@@ -124,7 +126,8 @@ export class MiniApp {
 
     try {
       const reactNativeDependency = await manifest.getNativeDependency(
-        PackagePath.fromString('react-native')
+        PackagePath.fromString('react-native'),
+        { manifestId }
       )
 
       if (!reactNativeDependency) {
@@ -464,13 +467,11 @@ in the package.json of ${packageJson.name} MiniApp
     }
   }
 
-  public async upgradeToPlatformVersion(
-    versionToUpgradeTo: string
-  ): Promise<any> {
+  public async updateToManifestId(manifestId: string): Promise<any> {
     // Update all modules versions in package.json
-    const manifestDependencies = await manifest.getJsAndNativeDependencies(
-      versionToUpgradeTo
-    )
+    const manifestDependencies = await manifest.getJsAndNativeDependencies({
+      manifestId,
+    })
 
     for (const manifestDependency of manifestDependencies) {
       if (this.packageJson.dependencies[manifestDependency.basePath]) {
@@ -499,7 +500,7 @@ in the package.json of ${packageJson.name} MiniApp
 with "ern" : { "version" : "${this.packageJson.ernPlatformVersion}" } instead`)
     }
 
-    this.packageJson.ern.version = versionToUpgradeTo
+    this.packageJson.ern.version = Platform.currentVersion
 
     // Write back package.json
     const appPackageJsonPath = path.join(this.path, 'package.json')
