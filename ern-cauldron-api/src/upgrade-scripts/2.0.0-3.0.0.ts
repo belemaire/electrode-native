@@ -112,6 +112,24 @@ export default async function upgrade(cauldronApi: CauldronApi) {
       })
       delete cauldron.config
     }
+    //  Move detachContainerVersionFromRoot to config
+    for (const nativeApp of cauldron.nativeApps) {
+      for (const platform of nativeApp.platforms) {
+        for (const version of platform.versions) {
+          if ((version as any).detachContainerVersionFromRoot) {
+            await cauldronApi.updateConfig({
+              config: {
+                detachContainerVersionFromRoot: (version as any)
+                  .detachContainerVersionFromRoot,
+              },
+              descriptor: NativeApplicationDescriptor.fromString(
+                `${nativeApp}:${platform}:${version}`
+              ),
+            })
+          }
+        }
+      }
+    }
     cauldron.schemaVersion = '3.0.0'
     await cauldronApi.commit('Upgrade Cauldron schema from v2.0.0 to v3.0.0')
     await cauldronApi.commitTransaction(
