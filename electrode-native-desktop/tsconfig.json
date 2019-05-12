@@ -15,7 +15,12 @@
     "inlineSourceMap": true,
     "allowJs": true,
     "esModuleInterop": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "ern-core": ["../ern-core/src/index.ts"],
+      "ern-cauldron-api": ["../ern-cauldron-api/src/index.ts"] 
+    }
   },
   "include": [
     "src/**/*.ts",

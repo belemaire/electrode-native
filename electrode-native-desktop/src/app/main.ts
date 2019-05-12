@@ -2,7 +2,7 @@
  * This is the main process entry point.
  * It is launching an Electron renderer window.
  */
-import { app, dialog, ipcMain } from 'electron'
+import { app } from 'electron'
 import { createMainWindow } from '../main-window'
 import log from 'electron-log'
 import isDev from 'electron-is-dev'
@@ -31,10 +31,13 @@ const installDevExtensions = async (): Promise<any> => {
 /**
  * Electron application entry point
  */
-app.on('ready', async (): Promise<void> => {
-  await installDevExtensions()
-  const window: Electron.BrowserWindow = createMainWindow(app.getAppPath())
-  createMenu(window)
-})
+app.on(
+  'ready',
+  async (): Promise<void> => {
+    await installDevExtensions()
+    const window: Electron.BrowserWindow = createMainWindow(app.getAppPath())
+    createMenu(window)
+  }
+)
 
 app.on('window-all-closed', app.quit)
