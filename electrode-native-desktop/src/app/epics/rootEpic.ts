@@ -14,7 +14,7 @@ async function getCauldronNativeApps(): Promise<CauldronNativeApp[]> {
 }
 
 function getNativeAppsEpic(action$: ActionsObservable<any>) {
-  return action$.ofType('GET_NATIVE_APPS').mergeMap(action =>
+  return action$.ofType('CAULDRON_CURRENT_CHANGED').mergeMap(action =>
     Observable.from(getCauldronNativeApps())
       .map(nativeAppsRetrieved)
       .catch(err => {
