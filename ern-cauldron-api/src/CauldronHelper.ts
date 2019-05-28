@@ -25,6 +25,10 @@ import semver from 'semver'
 export class CauldronHelper {
   private readonly cauldron: CauldronApi
 
+  public get api() {
+    return this.cauldron
+  }
+
   constructor(cauldronApi: CauldronApi) {
     if (!cauldronApi) {
       throw new Error('cauldronApi is required')
@@ -926,6 +930,22 @@ export class CauldronHelper {
       log.error(`[getContainerMiniApps] ${e}`)
       throw e
     }
+  }
+
+  public async getContainerMiniAppsWithBranches(
+    napDescriptor: NativeApplicationDescriptor
+  ): Promise<Array<[PackagePath, PackagePath | undefined]>> {
+    const miniApps = _.map(
+      await this.cauldron.getContainerMiniApps(napDescriptor),
+      PackagePath.fromString
+    )
+    const miniAppsBranches = await this.getContainerMiniAppsBranches(
+      napDescriptor
+    )
+    return _.map(miniApps, m => [
+      m,
+      _.find(miniAppsBranches, n => n.basePath === m.basePath),
+    ])
   }
 
   public async addCodePushEntry(

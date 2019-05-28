@@ -25,6 +25,7 @@ export async function runMiniApp(
   platform: NativePlatform,
   {
     baseComposite,
+    cwd,
     mainMiniAppName,
     miniapps,
     jsApiImpls,
@@ -36,6 +37,7 @@ export async function runMiniApp(
     extra,
   }: {
     baseComposite?: PackagePath
+    cwd?: string
     mainMiniAppName?: string
     miniapps?: PackagePath[]
     jsApiImpls?: PackagePath[]
@@ -47,7 +49,7 @@ export async function runMiniApp(
     extra?: any
   } = {}
 ) {
-  const cwd = process.cwd()
+  cwd = cwd || process.cwd()
 
   let napDescriptor: NativeApplicationDescriptor | void
 
