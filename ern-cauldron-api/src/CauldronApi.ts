@@ -36,8 +36,8 @@ export type ContainerPackagesArrayKey =
   | 'nativeDeps'
 
 export default class CauldronApi {
-  private readonly documentStore: ICauldronDocumentStore
-  private readonly fileStore: ICauldronFileStore
+  public readonly documentStore: ICauldronDocumentStore
+  public readonly fileStore: ICauldronFileStore
 
   constructor(
     documentStore: ICauldronDocumentStore,
@@ -214,13 +214,24 @@ export default class CauldronApi {
   }
 
   public async getCodePushEntries(
+    descriptor: NativeApplicationDescriptor
+  ): Promise<{ [key: string]: CauldronCodePushEntry[] }>
+  public async getCodePushEntries(
     descriptor: NativeApplicationDescriptor,
     deploymentName: string
-  ): Promise<CauldronCodePushEntry[]> {
+  ): Promise<CauldronCodePushEntry[]>
+  public async getCodePushEntries(
+    descriptor: NativeApplicationDescriptor,
+    deploymentName?: string
+  ): Promise<any> {
     this.throwIfPartialNapDescriptor(descriptor)
+
     const version = await this.getVersion(descriptor)
-    const result = version.codePush[deploymentName]
-    return result
+    if (!deploymentName) {
+      return version.codePush || {}
+    } else {
+      return version.codePush[deploymentName] || []
+    }
   }
 
   public async getContainerMiniApps(
