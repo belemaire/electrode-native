@@ -6,8 +6,6 @@ import { ICauldronFileStore } from './types'
 
 export default class GitFileStore extends BaseGit
   implements ICauldronFileStore {
-  private readonly prefix: string
-
   constructor({
     cauldronPath,
     repository,
@@ -36,13 +34,14 @@ export default class GitFileStore extends BaseGit
       shell.mkdir('-p', storeDirectoryPath)
     }
     const pathToFile = path.resolve(storeDirectoryPath, path.basename(filePath))
+    const isNewFile = !fs.existsSync(pathToFile)
     await fileUtils.writeFile(pathToFile, content, { flag: 'w' })
     if (fileMode) {
       shell.chmod(fileMode, pathToFile)
     }
     await this.git.add(pathToFile)
     if (!this.pendingTransaction) {
-      await this.git.commit(`Add file ${filePath}`)
+      await this.git.commit(`${isNewFile ? 'Add' : 'Update'} file ${filePath}`)
       await this.push()
     }
   }

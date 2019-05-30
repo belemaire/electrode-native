@@ -12,6 +12,7 @@ import {
   ICauldronFileStore,
   CauldronConfigLevel,
   CauldronObject,
+  ITransactional,
 } from './types'
 import upgradeScripts from './upgrade-scripts/scripts'
 import path from 'path'
@@ -35,7 +36,7 @@ export type ContainerPackagesArrayKey =
   | ContainerJsPackagesArrayKey
   | 'nativeDeps'
 
-export default class CauldronApi {
+export default class CauldronApi implements ITransactional {
   public readonly documentStore: ICauldronDocumentStore
   public readonly fileStore: ICauldronFileStore
 
@@ -80,7 +81,7 @@ export default class CauldronApi {
   }
 
   // =====================================================================================
-  // TRANSACTION MANAGEMENT
+  // TRANSACTION MANAGEMENT (ITransactional)
   // =====================================================================================
 
   public async beginTransaction(): Promise<void> {
@@ -107,33 +108,26 @@ export default class CauldronApi {
     return cauldron.schemaVersion || '0.0.0'
   }
 
-  public async getDescriptor(
-    descriptor: NativeApplicationDescriptor
-  ): Promise<any> {
-    if (descriptor.version) {
-      return this.getVersion(descriptor)
-    } else if (descriptor.platform) {
-      return this.getPlatform(descriptor)
-    } else {
-      return this.getNativeApplication(descriptor)
-    }
-  }
-
-  public async getNativeApplications(): Promise<CauldronNativeApp[]> {
-    const cauldron = await this.getCauldron()
-    return cauldron.nativeApps
-  }
-
   public async hasDescriptor(
     descriptor: NativeApplicationDescriptor
   ): Promise<boolean> {
-    if (descriptor.version) {
-      return this.hasVersion(descriptor)
-    } else if (descriptor.platform) {
-      return this.hasPlatform(descriptor)
-    } else {
-      return this.hasNativeApplication(descriptor)
-    }
+    return descriptor.version
+      ? this.hasVersion(descriptor)
+      : descriptor.platform
+      ? this.hasPlatform(descriptor)
+      : this.hasNativeApplication(descriptor)
+  }
+
+  public async getDescriptor(
+    descriptor: NativeApplicationDescriptor
+  ): Promise<
+    CauldronNativeApp | CauldronNativeAppPlatform | CauldronNativeAppVersion
+  > {
+    return descriptor.version
+      ? this.getVersion(descriptor)
+      : descriptor.platform
+      ? this.getPlatform(descriptor)
+      : this.getNativeApplication(descriptor)
   }
 
   public async hasNativeApplication(
@@ -164,6 +158,11 @@ export default class CauldronApi {
     const versions = await this.getVersions(descriptor)
     const result = _.find(versions, v => v.name === descriptor.version)
     return result != null
+  }
+
+  public async getNativeApplications(): Promise<CauldronNativeApp[]> {
+    const cauldron = await this.getCauldron()
+    return cauldron.nativeApps
   }
 
   public async getNativeApplication(
@@ -225,7 +224,6 @@ export default class CauldronApi {
     deploymentName?: string
   ): Promise<any> {
     this.throwIfPartialNapDescriptor(descriptor)
-
     const version = await this.getVersion(descriptor)
     if (!deploymentName) {
       return version.codePush || {}
@@ -236,18 +234,20 @@ export default class CauldronApi {
 
   public async getContainerMiniApps(
     descriptor: NativeApplicationDescriptor
-  ): Promise<string[]> {
+  ): Promise<PackagePath[]> {
     this.throwIfPartialNapDescriptor(descriptor)
     const version = await this.getVersion(descriptor)
-    return version.container.miniApps
+    return version.container.miniApps.map(p => PackagePath.fromString(p))
   }
 
   public async getContainerMiniAppsBranches(
     descriptor: NativeApplicationDescriptor
-  ): Promise<string[]> {
+  ): Promise<PackagePath[]> {
     this.throwIfPartialNapDescriptor(descriptor)
     const version = await this.getVersion(descriptor)
-    return version.container.miniAppsBranches || []
+    return (version.container.miniAppsBranches || []).map(b =>
+      PackagePath.fromString(b)
+    )
   }
 
   public async getContainerJsApiImplsBranches(
@@ -285,11 +285,11 @@ export default class CauldronApi {
 
   public async isMiniAppInContainer(
     descriptor: NativeApplicationDescriptor,
-    miniAppName: string
+    miniApp: PackagePath
   ): Promise<boolean> {
     this.throwIfPartialNapDescriptor(descriptor)
     const miniApps = await this.getContainerMiniApps(descriptor)
-    const result = _.find(miniApps, m => m.startsWith(miniAppName))
+    const result = _.find(miniApps, m => m.basePath === miniApp.basePath)
     if (!result) {
       return false
     } else {
@@ -299,14 +299,16 @@ export default class CauldronApi {
 
   public async getContainerMiniApp(
     descriptor: NativeApplicationDescriptor,
-    miniAppName: string
-  ): Promise<string> {
+    miniApp: PackagePath
+  ): Promise<PackagePath> {
     this.throwIfPartialNapDescriptor(descriptor)
     const miniApps = await this.getContainerMiniApps(descriptor)
-    const result = _.find(miniApps, m => m.startsWith(miniAppName))
+    const result = _.find(miniApps, m => m.basePath === miniApp.basePath)
     if (!result) {
       throw new Error(
-        `Cannot find ${miniAppName} MiniApp in ${descriptor.toString()} Container`
+        `Cannot find ${
+          miniApp.basePath
+        } MiniApp in ${descriptor.toString()} Container`
       )
     }
     return result
@@ -314,42 +316,33 @@ export default class CauldronApi {
 
   public async getNativeDependencies(
     descriptor: NativeApplicationDescriptor
-  ): Promise<string[]> {
+  ): Promise<PackagePath[]> {
     this.throwIfPartialNapDescriptor(descriptor)
     const version = await this.getVersion(descriptor)
-    return version.container.nativeDeps
+    return _.map(version.container.nativeDeps, d => PackagePath.fromString(d))
   }
 
   public async isNativeDependencyInContainer(
     descriptor: NativeApplicationDescriptor,
-    nativeDepName: string
+    nativeDep: PackagePath
   ): Promise<boolean> {
     this.throwIfPartialNapDescriptor(descriptor)
     const nativeDeps = await this.getNativeDependencies(descriptor)
-    const result = _.find(
-      nativeDeps,
-      x => x === nativeDepName || x.startsWith(`${nativeDepName}@`)
-    )
-    if (!result) {
-      return false
-    } else {
-      return true
-    }
+    return !!_.find(nativeDeps, x => x.basePath === nativeDep.basePath)
   }
 
   public async getContainerNativeDependency(
     descriptor: NativeApplicationDescriptor,
-    nativeDepName: string
-  ): Promise<string> {
+    nativeDep: PackagePath
+  ): Promise<PackagePath> {
     this.throwIfPartialNapDescriptor(descriptor)
     const nativeDeps = await this.getNativeDependencies(descriptor)
-    const result = _.find(
-      nativeDeps,
-      x => x === nativeDepName || x.startsWith(`${nativeDepName}@`)
-    )
+    const result = _.find(nativeDeps, x => x.basePath === nativeDep.basePath)
     if (!result) {
       throw new Error(
-        `Cannot find ${nativeDepName} native dependency in ${descriptor.toString()} Container`
+        `Cannot find ${
+          nativeDep.basePath
+        } native dependency in ${descriptor.toString()} Container`
       )
     }
     return result

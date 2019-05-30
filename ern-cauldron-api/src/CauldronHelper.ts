@@ -374,10 +374,7 @@ export class CauldronHelper {
   public async getNativeDependencies(
     napDescriptor: NativeApplicationDescriptor
   ): Promise<PackagePath[]> {
-    const dependencies = await this.cauldron.getNativeDependencies(
-      napDescriptor
-    )
-    return _.map(dependencies, PackagePath.fromString)
+    return this.cauldron.getNativeDependencies(napDescriptor)
   }
 
   public async addFile({
@@ -537,23 +534,19 @@ export class CauldronHelper {
 
   public async isNativeDependencyInContainer(
     napDescriptor: NativeApplicationDescriptor,
-    dependencyName: string
+    dependency: PackagePath
   ): Promise<boolean> {
     return this.cauldron.isNativeDependencyInContainer(
       napDescriptor,
-      dependencyName
+      dependency
     )
   }
 
   public async getContainerNativeDependency(
     napDescriptor: NativeApplicationDescriptor,
-    dependencyName: string
+    dependency: PackagePath
   ): Promise<PackagePath> {
-    const dependency = await this.cauldron.getContainerNativeDependency(
-      napDescriptor,
-      dependencyName
-    )
-    return PackagePath.fromString(dependency)
+    return this.cauldron.getContainerNativeDependency(napDescriptor, dependency)
   }
 
   public async syncContainerPackages({
@@ -797,16 +790,16 @@ export class CauldronHelper {
 
   public async isMiniAppInContainer(
     napDescriptor: NativeApplicationDescriptor,
-    miniApp: any
+    miniApp: PackagePath
   ): Promise<boolean> {
-    return this.cauldron.isMiniAppInContainer(napDescriptor, miniApp.toString())
+    return this.cauldron.isMiniAppInContainer(napDescriptor, miniApp)
   }
 
   public async getContainerMiniApp(
     napDescriptor: NativeApplicationDescriptor,
-    miniApp: any
-  ): Promise<string> {
-    return this.cauldron.getContainerMiniApp(napDescriptor, miniApp.toString())
+    miniApp: PackagePath
+  ): Promise<PackagePath> {
+    return this.cauldron.getContainerMiniApp(napDescriptor, miniApp)
   }
 
   public async getCodePushMiniApps(
@@ -858,10 +851,7 @@ export class CauldronHelper {
   }
 
   public async getContainerMiniAppsBranches(napDescriptor) {
-    const miniAppsBranches = await this.cauldron.getContainerMiniAppsBranches(
-      napDescriptor
-    )
-    return _.map(miniAppsBranches, PackagePath.fromString)
+    return this.cauldron.getContainerMiniAppsBranches(napDescriptor)
   }
 
   public async getContainerJsApiImplsBranches(napDescriptor) {
@@ -909,8 +899,7 @@ export class CauldronHelper {
     } = {}
   ): Promise<PackagePath[]> {
     try {
-      const miniApps = await this.cauldron.getContainerMiniApps(napDescriptor)
-      const result = _.map(miniApps, PackagePath.fromString)
+      const result = await this.cauldron.getContainerMiniApps(napDescriptor)
       if (favorGitBranches) {
         const miniAppsBranches = await this.getContainerMiniAppsBranches(
           napDescriptor
@@ -942,10 +931,7 @@ export class CauldronHelper {
   public async getContainerMiniAppsWithBranches(
     napDescriptor: NativeApplicationDescriptor
   ): Promise<Array<[PackagePath, PackagePath | undefined]>> {
-    const miniApps = _.map(
-      await this.cauldron.getContainerMiniApps(napDescriptor),
-      PackagePath.fromString
-    )
+    const miniApps = await this.cauldron.getContainerMiniApps(napDescriptor)
     const miniAppsBranches = await this.getContainerMiniAppsBranches(
       napDescriptor
     )
@@ -1300,12 +1286,10 @@ export class CauldronHelper {
     descriptor: NativeApplicationDescriptor
   ): Promise<PackagePath[]> {
     const result: PackagePath[] = []
-    const miniAppsBranches = (await this.cauldron.getContainerMiniAppsBranches(
+    const miniAppsBranches = await this.cauldron.getContainerMiniAppsBranches(
       descriptor
-    )).map(p => PackagePath.fromString(p))
-    const miniApps = (await this.cauldron.getContainerMiniApps(descriptor)).map(
-      p => PackagePath.fromString(p)
     )
+    const miniApps = await this.cauldron.getContainerMiniApps(descriptor)
     for (const miniAppBranch of miniAppsBranches) {
       const latestCommitSha = await coreUtils.getCommitShaOfGitBranchOrTag(
         miniAppBranch

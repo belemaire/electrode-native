@@ -180,9 +180,7 @@ export default class Ensure {
     const cauldron = await getActiveCauldron()
     const miniApps = coreUtils.coerceToPackagePathArray(obj)
     for (const miniApp of miniApps) {
-      if (
-        await cauldron.isMiniAppInContainer(napDescriptor, miniApp.basePath)
-      ) {
+      if (await cauldron.isMiniAppInContainer(napDescriptor, miniApp)) {
         throw new Error(
           `${
             miniApp.basePath
@@ -204,10 +202,7 @@ export default class Ensure {
     const dependencies = coreUtils.coerceToPackagePathArray(obj)
     for (const dependency of dependencies) {
       if (
-        await cauldron.isNativeDependencyInContainer(
-          napDescriptor,
-          dependency.basePath
-        )
+        await cauldron.isNativeDependencyInContainer(napDescriptor, dependency)
       ) {
         throw new Error(
           `${
@@ -229,9 +224,7 @@ export default class Ensure {
     const cauldron = await getActiveCauldron()
     const miniApps = coreUtils.coerceToPackagePathArray(obj)
     for (const miniApp of miniApps) {
-      if (
-        !(await cauldron.isMiniAppInContainer(napDescriptor, miniApp.basePath))
-      ) {
+      if (!(await cauldron.isMiniAppInContainer(napDescriptor, miniApp))) {
         throw new Error(
           `${
             miniApp.basePath
@@ -255,7 +248,7 @@ export default class Ensure {
       if (
         !(await cauldron.getContainerNativeDependency(
           napDescriptor,
-          dependency.basePath
+          dependency
         ))
       ) {
         throw new Error(
@@ -282,11 +275,10 @@ export default class Ensure {
       napDescriptor
     )
     for (const miniApp of miniApps) {
-      const miniAppFromCauldron = await cauldron.getContainerMiniApp(
+      const cauldronMiniApp = await cauldron.getContainerMiniApp(
         napDescriptor,
-        miniApp.basePath
+        miniApp
       )
-      const cauldronMiniApp = PackagePath.fromString(miniAppFromCauldron)
       if (cauldronMiniApp.version === miniApp.version) {
         throw new Error(
           `${
