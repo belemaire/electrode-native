@@ -1,10 +1,8 @@
 import { RunnerGenerator, RunnerGeneratorConfig } from 'ern-runner-gen'
-import { mustacheUtils, NativePlatform, shell } from 'ern-core'
+import { mustacheUtils, NativePlatform, shell, utils } from 'ern-core'
 import path from 'path'
 
 const runnerHullPath = path.join(__dirname, 'hull')
-const defaultReactNativePackagerHost = 'localhost'
-const defaultReactNativePackagerPort = '8081'
 
 export default class IosRunerGenerator implements RunnerGenerator {
   public get platform(): NativePlatform {
@@ -13,13 +11,13 @@ export default class IosRunerGenerator implements RunnerGenerator {
 
   public async generate(config: RunnerGeneratorConfig): Promise<void> {
     this.validateExtraConfig(config)
-    const mustacheView = this.createMustacheView({ config })
-
+    const mustacheView = this.createMustacheView(config)
     shell.cp('-R', path.join(runnerHullPath, '*'), config.outDir)
+
     const filesToMustache = [
-      path.join(config.outDir, 'ErnRunner', 'RunnerConfig.m'),
-      path.join(config.outDir, 'ErnRunner.xcodeproj', 'project.pbxproj'),
-    ]
+      'ErnRunner/RunnerConfig.m',
+      'ErnRunner.xcodeproj/project.pbxproj',
+    ].map(f => path.join(config.outDir, ...f.split('/')))
 
     for (const file of filesToMustache) {
       await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
@@ -34,13 +32,11 @@ export default class IosRunerGenerator implements RunnerGenerator {
     config: RunnerGeneratorConfig
   ): Promise<void> {
     this.validateExtraConfig(config)
-    const mustacheView = this.createMustacheView({ config })
-    const pathToRunnerConfig = path.join(
-      config.outDir,
-      'ErnRunner/RunnerConfig.m'
-    )
+    const mustacheView = this.createMustacheView(config)
+    const subPathToRunnerConfig = path.join('ErnRunner', 'RunnerConfig.m')
+    const pathToRunnerConfig = path.join(config.outDir, subPathToRunnerConfig)
     shell.cp(
-      path.join(runnerHullPath, 'ErnRunner', 'RunnerConfig.m'),
+      path.join(runnerHullPath, subPathToRunnerConfig),
       pathToRunnerConfig
     )
     await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
@@ -50,35 +46,24 @@ export default class IosRunerGenerator implements RunnerGenerator {
     )
   }
 
-  public createMustacheView({ config }: { config: RunnerGeneratorConfig }) {
-    const pathToElectrodeContainerXcodeProj = replaceHomePathWithTidle(
+  public createMustacheView(config: RunnerGeneratorConfig) {
+    const pathToElectrodeContainerXcodeProj = utils.replaceHomePathWithTidle(
       path.join(config.extra.containerGenWorkingDir, 'out', 'ios')
     )
     return {
       isReactNativeDevSupportEnabled:
         config.reactNativeDevSupportEnabled === true ? 'YES' : 'NO',
       miniAppName: config.mainMiniAppName,
-      packagerHost:
-        config.reactNativePackagerHost || defaultReactNativePackagerHost,
-      packagerPort:
-        config.reactNativePackagerPort || defaultReactNativePackagerPort,
-      pascalCaseMiniAppName: pascalCase(config.mainMiniAppName),
+      packagerHost: config.reactNativePackagerHost,
+      packagerPort: config.reactNativePackagerPort,
+      pascalCaseMiniAppName: utils.pascalCase(config.mainMiniAppName),
       pathToElectrodeContainerXcodeProj,
     }
   }
 
-  private validateExtraConfig(config: RunnerGeneratorConfig) {
+  public validateExtraConfig(config: RunnerGeneratorConfig) {
     if (!config.extra || !config.extra.containerGenWorkingDir) {
       throw new Error('Missing containerGenWorkingDir in extra config')
     }
   }
-}
-
-// Given a string returns the same string with its first letter capitalized
-function pascalCase(str: string) {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
-}
-
-function replaceHomePathWithTidle(p: string) {
-  return process.env.HOME ? p.replace(process.env.HOME, '~') : p
 }

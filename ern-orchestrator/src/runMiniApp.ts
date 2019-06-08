@@ -185,8 +185,8 @@ export async function runMiniApp(
     mainMiniAppName: entryMiniAppName,
     outDir: pathToRunner,
     reactNativeDevSupportEnabled: dev,
-    reactNativePackagerHost: host,
-    reactNativePackagerPort: port,
+    reactNativePackagerHost: host || 'localhost',
+    reactNativePackagerPort: port || '8081',
     targetPlatform: platform,
   }
 

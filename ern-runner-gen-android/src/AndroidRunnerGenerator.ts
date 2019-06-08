@@ -1,12 +1,9 @@
 import { RunnerGenerator, RunnerGeneratorConfig } from 'ern-runner-gen'
 import { mustacheUtils, NativePlatform, shell } from 'ern-core'
-import readDir from 'fs-readdir-recursive'
 import path from 'path'
-import { android } from 'ern-core'
+import { android, utils } from 'ern-core'
 
 const runnerHullPath = path.join(__dirname, 'hull')
-const defaultReactNativePackagerHost = 'localhost'
-const defaultReactNativePackagerPort = '8081'
 
 export default class AndroidRunnerGenerator implements RunnerGenerator {
   public get platform(): NativePlatform {
@@ -14,19 +11,21 @@ export default class AndroidRunnerGenerator implements RunnerGenerator {
   }
 
   public async generate(config: RunnerGeneratorConfig): Promise<void> {
-    let mustacheView: any = {}
-    mustacheView = configureMustacheView(config, mustacheView)
-
+    const mustacheView = this.createMustacheView(config)
     shell.cp('-R', path.join(runnerHullPath, '*'), config.outDir)
-    const files = readDir(
-      runnerHullPath,
-      f => !f.endsWith('.jar') && !f.endsWith('.png')
-    )
-    for (const file of files) {
+
+    const filesToMustache = [
+      'build.gradle',
+      'app/build.gradle',
+      'app/src/main/java/com/walmartlabs/ern/RunnerConfig.java',
+      'gradle/wrapper/gradle-wrapper.properties',
+    ].map(f => path.join(config.outDir, ...f.split('/')))
+
+    for (const file of filesToMustache) {
       await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
-        path.join(config.outDir, file),
+        file,
         mustacheView,
-        path.join(config.outDir, file)
+        file
       )
     }
   }
@@ -34,9 +33,7 @@ export default class AndroidRunnerGenerator implements RunnerGenerator {
   public async regenerateRunnerConfig(
     config: RunnerGeneratorConfig
   ): Promise<void> {
-    let mustacheView: any = {}
-    mustacheView = configureMustacheView(config, mustacheView)
-
+    const mustacheView = this.createMustacheView(config)
     const subPathToRunnerConfig = path.join(
       'app',
       'src',
@@ -59,30 +56,23 @@ export default class AndroidRunnerGenerator implements RunnerGenerator {
       pathToRunnerConfig
     )
   }
-}
 
-// Given a string returns the same string with its first letter capitalized
-function pascalCase(str: string) {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
-}
+  public createMustacheView(config: RunnerGeneratorConfig) {
+    let mustacheView: any = {}
+    const versions = android.resolveAndroidVersions(
+      config.extra && config.extra.androidConfig
+    )
+    mustacheView = Object.assign(mustacheView, versions)
 
-function configureMustacheView(
-  config: RunnerGeneratorConfig,
-  mustacheView: any
-) {
-  const versions = android.resolveAndroidVersions(
-    config.extra && config.extra.androidConfig
-  )
-  mustacheView = Object.assign(mustacheView, versions)
+    mustacheView.isReactNativeDevSupportEnabled =
+      config.reactNativeDevSupportEnabled === true ? 'true' : 'false'
+    mustacheView.miniAppName = config.mainMiniAppName
+    mustacheView.packagerHost = config.reactNativePackagerHost
+    mustacheView.packagerPort = config.reactNativePackagerPort
+    mustacheView.pascalCaseMiniAppName = utils.pascalCase(
+      config.mainMiniAppName
+    )
 
-  mustacheView.isReactNativeDevSupportEnabled =
-    config.reactNativeDevSupportEnabled === true ? 'true' : 'false'
-  mustacheView.miniAppName = config.mainMiniAppName
-  mustacheView.packagerHost =
-    config.reactNativePackagerHost || defaultReactNativePackagerHost
-  mustacheView.packagerPort =
-    config.reactNativePackagerPort || defaultReactNativePackagerPort
-  mustacheView.pascalCaseMiniAppName = pascalCase(config.mainMiniAppName)
-
-  return mustacheView
+    return mustacheView
+  }
 }

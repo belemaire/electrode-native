@@ -21,6 +21,15 @@ import {
 
 const gitDirectoryRe = /.*\/(.*).git/
 
+export function replaceHomePathWithTidle(p: string) {
+  return process.env.HOME ? p.replace(process.env.HOME, '~') : p
+}
+
+// Given a string returns the same string with its first letter capitalized
+export function pascalCase(str: string) {
+  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
+}
+
 export async function isPublishedToNpm(
   pkg: string | PackagePath
 ): Promise<boolean> {
