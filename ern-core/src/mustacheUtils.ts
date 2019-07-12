@@ -1,5 +1,5 @@
 import Mustache from 'mustache'
-import fs from 'fs'
+import { readFile, writeFile } from './fileUtil'
 
 // =============================================================================
 // Mustache related utilities
@@ -32,32 +32,4 @@ export async function mustacheRenderToOutputFileUsingTemplateFile(
       return writeFile(outputFile, output)
     }
   )
-}
-
-// =============================================================================
-// Async wrappers
-// =============================================================================
-
-async function readFile(filename: string, encoding: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    fs.readFile(filename, { encoding }, (err, res) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(res)
-      }
-    })
-  })
-}
-
-async function writeFile(filename: string, data: any) {
-  return new Promise((resolve, reject) => {
-    fs.writeFile(filename, data, err => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve()
-      }
-    })
-  })
 }
