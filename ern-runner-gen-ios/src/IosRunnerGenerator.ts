@@ -13,21 +13,11 @@ export default class IosRunerGenerator implements RunnerGenerator {
 
   public async generate(config: RunnerGeneratorConfig): Promise<void> {
     this.validateExtraConfig(config)
-    const mustacheView = this.createMustacheView({ config })
-
-    shell.cp('-R', path.join(runnerHullPath, '*'), config.outDir)
-    const filesToMustache = [
-      path.join(config.outDir, 'ErnRunner', 'RunnerConfig.m'),
-      path.join(config.outDir, 'ErnRunner.xcodeproj', 'project.pbxproj'),
-    ]
-
-    for (const file of filesToMustache) {
-      await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
-        file,
-        mustacheView,
-        file
-      )
-    }
+    return mustacheUtils.mustacheDirectory({
+      inputDir: runnerHullPath,
+      mustacheView: this.createMustacheView({ config }),
+      outputDir: config.outDir,
+    })
   }
 
   public async regenerateRunnerConfig(
@@ -40,7 +30,7 @@ export default class IosRunerGenerator implements RunnerGenerator {
       'ErnRunner/RunnerConfig.m'
     )
     shell.cp(
-      path.join(runnerHullPath, 'ErnRunner', 'RunnerConfig.m'),
+      path.join(runnerHullPath, 'ErnRunner', 'RunnerConfig.m.mustache'),
       pathToRunnerConfig
     )
     await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
@@ -50,7 +40,7 @@ export default class IosRunerGenerator implements RunnerGenerator {
     )
   }
 
-  public createMustacheView({ config }: { config: RunnerGeneratorConfig }) {
+  public createMustacheView(config: RunnerGeneratorConfig) {
     const pathToElectrodeContainerXcodeProj = replaceHomePathWithTidle(
       path.join(config.extra.containerGenWorkingDir, 'out', 'ios')
     )

@@ -124,11 +124,6 @@ export default class ApiImplAndroidGenerator implements ApiImplGeneratable {
           )
         }
       }
-      const editableFiles = await this.generateRequestHandlerClasses(
-        apiDependency,
-        paths,
-        apis
-      )
       await this.updateGradleProperties(paths, outputDirectory)
       await this.updateBuildGradle(paths, reactNativeVersion, outputDirectory)
     } finally {

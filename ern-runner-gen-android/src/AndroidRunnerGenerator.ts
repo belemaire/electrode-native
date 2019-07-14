@@ -1,6 +1,5 @@
 import { RunnerGenerator, RunnerGeneratorConfig } from 'ern-runner-gen'
 import { mustacheUtils, NativePlatform, shell } from 'ern-core'
-import readDir from 'fs-readdir-recursive'
 import path from 'path'
 import { android } from 'ern-core'
 
@@ -14,38 +13,20 @@ export default class AndroidRunnerGenerator implements RunnerGenerator {
   }
 
   public async generate(config: RunnerGeneratorConfig): Promise<void> {
-    let mustacheView: any = {}
-    mustacheView = configureMustacheView(config, mustacheView)
-
-    shell.cp('-R', path.join(runnerHullPath, '*'), config.outDir)
-    const files = readDir(
-      runnerHullPath,
-      f => !f.endsWith('.jar') && !f.endsWith('.png')
-    )
-    for (const file of files) {
-      await mustacheUtils.mustacheRenderToOutputFileUsingTemplateFile(
-        path.join(config.outDir, file),
-        mustacheView,
-        path.join(config.outDir, file)
-      )
-    }
+    return mustacheUtils.mustacheDirectory({
+      inputDir: runnerHullPath,
+      mustacheView: createMustacheView(config),
+      outputDir: config.outDir,
+    })
   }
 
   public async regenerateRunnerConfig(
     config: RunnerGeneratorConfig
   ): Promise<void> {
-    let mustacheView: any = {}
-    mustacheView = configureMustacheView(config, mustacheView)
+    const mustacheView = createMustacheView(config)
 
-    const subPathToRunnerConfig = path.join(
-      'app',
-      'src',
-      'main',
-      'java',
-      'com',
-      'walmartlabs',
-      'ern',
-      'RunnerConfig.java'
+    const subPathToRunnerConfig = path.normalize(
+      'app/src/main/java/com/walmartlabs/ern/RunnerConfig.java.mustache'
     )
     const pathToRunnerConfigHull = path.join(
       runnerHullPath,
@@ -61,28 +42,22 @@ export default class AndroidRunnerGenerator implements RunnerGenerator {
   }
 }
 
-// Given a string returns the same string with its first letter capitalized
-function pascalCase(str: string) {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
+function createMustacheView(config: RunnerGeneratorConfig) {
+  return {
+    isReactNativeDevSupportEnabled:
+      config.reactNativeDevSupportEnabled === true ? 'true' : 'false',
+    miniAppName: config.mainMiniAppName,
+    packagerHost:
+      config.reactNativePackagerHost || defaultReactNativePackagerHost,
+    packagerPort:
+      config.reactNativePackagerPort || defaultReactNativePackagerPort,
+    pascalCaseMiniAppName: pascalCase(config.mainMiniAppName),
+    ...android.resolveAndroidVersions(
+      config.extra && config.extra.androidConfig
+    ),
+  }
 }
 
-function configureMustacheView(
-  config: RunnerGeneratorConfig,
-  mustacheView: any
-) {
-  const versions = android.resolveAndroidVersions(
-    config.extra && config.extra.androidConfig
-  )
-  mustacheView = Object.assign(mustacheView, versions)
-
-  mustacheView.isReactNativeDevSupportEnabled =
-    config.reactNativeDevSupportEnabled === true ? 'true' : 'false'
-  mustacheView.miniAppName = config.mainMiniAppName
-  mustacheView.packagerHost =
-    config.reactNativePackagerHost || defaultReactNativePackagerHost
-  mustacheView.packagerPort =
-    config.reactNativePackagerPort || defaultReactNativePackagerPort
-  mustacheView.pascalCaseMiniAppName = pascalCase(config.mainMiniAppName)
-
-  return mustacheView
+function pascalCase(str: string) {
+  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
 }

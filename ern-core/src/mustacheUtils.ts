@@ -1,5 +1,8 @@
 import Mustache from 'mustache'
 import { readFile, writeFile } from './fileUtil'
+import shell from './shell'
+import path from 'path'
+import readDir from 'fs-readdir-recursive'
 
 // =============================================================================
 // Mustache related utilities
@@ -32,4 +35,50 @@ export async function mustacheRenderToOutputFileUsingTemplateFile(
       return writeFile(outputFile, output)
     }
   )
+}
+
+export async function mustacheDirectory({
+  inputDir,
+  outputDir,
+  mustacheView,
+}: {
+  inputDir: string
+  outputDir?: string
+  mustacheView: any
+}) {
+  if (outputDir) {
+    shell.cp('-R', path.join(inputDir, '{.*,*}'), outputDir)
+  }
+
+  /**
+   * Recursively get path to all mustache files
+   * from input directory (all files with .mustache extension)
+   */
+  const mustacheFiles = readDir(
+    inputDir,
+    () => true /* also return hidden files */
+  )
+    .filter(f => f.endsWith('.mustache'))
+    .map(f => path.join(inputDir, f))
+
+  /**
+   * Apply mustache view to each .mustache file
+   * and save result to file with same path but
+   * without .mustache extension.
+   * Cleanup by removing .mustache template file.
+   *
+   * For example if file path is
+   *  /Users/foo/bar/ElectrodeContainer.h.mustache
+   *
+   * The resulting mustache rendered file will be
+   *  /Users/foo/bar/ElectrodeContainer.h
+   */
+  for (const mustacheFile of mustacheFiles) {
+    await mustacheRenderToOutputFileUsingTemplateFile(
+      mustacheFile,
+      mustacheView,
+      mustacheFile.replace('.mustache', '')
+    )
+    shell.rm(mustacheFile)
+  }
 }
