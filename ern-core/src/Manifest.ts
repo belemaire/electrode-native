@@ -9,21 +9,18 @@ import fs from 'fs'
 import { isDependencyApi, isDependencyApiImpl } from './utils'
 import config from './config'
 import log from './log'
+import { Android, Ios, NativePlatform } from './NativePlatform'
 
 /**
  * Plugin (React Native Native Module) configuration.
  * Used by Container generator to properly add a plugin to
  * the Container during generation
  */
-export interface PluginConfig {
+export interface Plugin<T extends NativePlatform> {
   /**
-   * Android plugin configuration.
+   * Plugin configuration.
    */
-  android?: AndroidPluginConfig
-  /**
-   * iOS plugin configuration
-   */
-  ios?: IosPluginConfig
+  config: T extends Android ? AndroidPluginConfig : IosPluginConfig
   /**
    * Location of the source code of this plugin
    */
@@ -598,11 +595,11 @@ export class Manifest {
     return pluginConfigPath !== undefined
   }
 
-  public async getPluginConfigFromManifest(
+  public async getIosPluginFromManifest(
     plugin: PackagePath,
     platformVersion: string,
     projectName: string
-  ): Promise<PluginConfig> {
+  ): Promise<Plugin<Ios>> {
     const pluginConfigPath = await this.getPluginConfigPath(
       plugin,
       platformVersion
@@ -615,66 +612,105 @@ export class Manifest {
       )
     }
 
-    let result: PluginConfig
+    let parsed: any
+
     let configFile = fs.readFileSync(
       path.join(pluginConfigPath, pluginConfigFileName),
       'utf-8'
     )
     configFile = Mustache.render(configFile, { projectName })
-    result = JSON.parse(configFile)
+    parsed = JSON.parse(configFile)
 
-    // Add default value (convention) for Android subsection for missing fields
-    if (result.android) {
-      if (result.android.root === undefined) {
-        result.android.root = 'android'
-      }
+    const matchedHeaderFiles = shell.find(pluginConfigPath).filter(file => {
+      return file.match(/\.h$/)
+    })
+    const matchedSourceFiles = shell.find(pluginConfigPath).filter(file => {
+      return file.match(/\.m$/)
+    })
 
-      const matchedFiles = shell.find(pluginConfigPath).filter(file => {
-        return file.match(/\.java$/)
-      })
-      if (matchedFiles && matchedFiles.length === 1) {
-        const pluginHookClass = path.basename(matchedFiles[0], '.java')
-        result.android.pluginHook = {
-          configurable: false,
-          name: pluginHookClass,
-        }
-        if (
-          fs
-            .readFileSync(matchedFiles[0], 'utf-8')
-            .includes('public static class Config')
-        ) {
-          result.android.pluginHook.configurable = true
-        }
+    let pluginHook
+    if (
+      matchedHeaderFiles &&
+      matchedHeaderFiles.length === 1 &&
+      matchedSourceFiles &&
+      matchedSourceFiles.length === 1
+    ) {
+      const pluginHookClass = path.basename(matchedHeaderFiles[0], '.h')
+      pluginHook = {
+        configurable: true,
+        name: pluginHookClass,
       }
     }
 
-    if (result.ios) {
-      if (result.ios.root === undefined) {
-        result.ios.root = 'ios'
+    return {
+      config: {
+        pbxproj: parsed.ios.pbxbproj,
+        pluginHook,
+        root: parsed.ios.root || 'ios',
+        setBuildSettings: parsed.ios.setBuildSettings,
+      },
+      origin: parsed.origin || this.getDefaultNpmPluginOrigin(plugin),
+      path: pluginConfigPath,
+    }
+  }
+
+  public async getAndroidPluginFromManifest(
+    plugin: PackagePath,
+    platformVersion: string,
+    projectName: string
+  ): Promise<Plugin<Android>> {
+    const pluginConfigPath = await this.getPluginConfigPath(
+      plugin,
+      platformVersion
+    )
+    if (!pluginConfigPath) {
+      throw new Error(
+        `There is no configuration for ${
+          plugin.basePath
+        } plugin in Manifest matching platform version ${platformVersion}`
+      )
+    }
+
+    let parsed: any
+
+    let configFile = fs.readFileSync(
+      path.join(pluginConfigPath, pluginConfigFileName),
+      'utf-8'
+    )
+    configFile = Mustache.render(configFile, { projectName })
+    parsed = JSON.parse(configFile)
+
+    let pluginHook
+    const matchedFiles = shell.find(pluginConfigPath).filter(file => {
+      return file.match(/\.java$/)
+    })
+    if (matchedFiles && matchedFiles.length === 1) {
+      const pluginHookClass = path.basename(matchedFiles[0], '.java')
+      pluginHook = {
+        configurable: false,
+        name: pluginHookClass,
       }
-
-      const matchedHeaderFiles = shell.find(pluginConfigPath).filter(file => {
-        return file.match(/\.h$/)
-      })
-      const matchedSourceFiles = shell.find(pluginConfigPath).filter(file => {
-        return file.match(/\.m$/)
-      })
-
       if (
-        matchedHeaderFiles &&
-        matchedHeaderFiles.length === 1 &&
-        matchedSourceFiles &&
-        matchedSourceFiles.length === 1
+        fs
+          .readFileSync(matchedFiles[0], 'utf-8')
+          .includes('public static class Config')
       ) {
-        const pluginHookClass = path.basename(matchedHeaderFiles[0], '.h')
-        result.ios.pluginHook = {
-          configurable: true,
-          name: pluginHookClass,
-        }
+        pluginHook.configurable = true
       }
     }
-    result.path = pluginConfigPath
-    return result
+
+    return {
+      config: {
+        dependencies: parsed.android.dependencies,
+        moduleName: parsed.android.moduleName,
+        permissions: parsed.android.permissions,
+        pluginHook,
+        repositories: parsed.android.repositories,
+        root: parsed.android.root || 'android',
+      },
+      origin: parsed.origin || this.getDefaultNpmPluginOrigin(plugin),
+      path: pluginConfigPath,
+    }
   }
 
   public getDefaultNpmPluginOrigin(plugin: PackagePath): NpmPluginOrigin {
@@ -694,18 +730,18 @@ export class Manifest {
     }
   }
 
-  public async getPluginConfig(
+  public async getAndroidPlugin(
     plugin: PackagePath,
     projectName: string = 'ElectrodeContainer',
     platformVersion: string = Platform.currentVersion
-  ): Promise<PluginConfig | void> {
+  ): Promise<Plugin<Android> | void> {
     await this.initOverrideManifest()
     let result
     if (await this.isPluginConfigInManifest(plugin, platformVersion)) {
       log.debug(
         'Third party plugin detected. Retrieving plugin configuration from manifest'
       )
-      result = await this.getPluginConfigFromManifest(
+      result = await this.getAndroidPluginFromManifest(
         plugin,
         platformVersion,
         projectName
@@ -714,12 +750,12 @@ export class Manifest {
       log.debug(
         'API plugin detected. Retrieving API plugin default configuration'
       )
-      result = this.getApiPluginDefaultConfig(plugin, projectName)
+      result = this.getAndroidApiPlugin(plugin, projectName)
     } else if (await isDependencyApiImpl(plugin.basePath)) {
       log.debug(
         'APIImpl plugin detected. Retrieving APIImpl plugin default configuration'
       )
-      result = this.getApiImplPluginDefaultConfig(plugin, projectName)
+      result = this.getAndroidApiImplPlugin(plugin, projectName)
     } else {
       log.warn(
         `Unsupported plugin. No configuration found in manifest for ${
@@ -727,32 +763,61 @@ export class Manifest {
         }.`
       )
       return
-      /*throw new Error(
-        `Unsupported plugin. No configuration found in manifest for ${
-          plugin.basePath
-        }`
-      )*/
     }
 
-    if (!result.origin) {
-      result.origin = this.getDefaultNpmPluginOrigin(plugin)
-    } else if (!result.origin.version) {
-      result.origin.version = plugin.version
-    }
+    result.origin = result.origin || this.getDefaultNpmPluginOrigin(plugin)
+    result.origin.version = result.origin.version || plugin.version
 
     return result
   }
 
-  public getApiPluginDefaultConfig(
+  public async getIosPlugin(
+    plugin: PackagePath,
+    projectName: string = 'ElectrodeContainer',
+    platformVersion: string = Platform.currentVersion
+  ): Promise<Plugin<Ios> | void> {
+    await this.initOverrideManifest()
+    let result
+    if (await this.isPluginConfigInManifest(plugin, platformVersion)) {
+      log.debug(
+        'Third party plugin detected. Retrieving plugin configuration from manifest'
+      )
+      result = await this.getIosPluginFromManifest(
+        plugin,
+        platformVersion,
+        projectName
+      )
+    } else if (await isDependencyApi(plugin.basePath)) {
+      log.debug(
+        'API plugin detected. Retrieving API plugin default configuration'
+      )
+      result = this.getIosApiPlugin(plugin, projectName)
+    } else if (await isDependencyApiImpl(plugin.basePath)) {
+      log.debug(
+        'APIImpl plugin detected. Retrieving APIImpl plugin default configuration'
+      )
+      result = this.getIosApiImplPlugin(plugin, projectName)
+    } else {
+      log.warn(
+        `Unsupported plugin. No configuration found in manifest for ${
+          plugin.basePath
+        }.`
+      )
+      return
+    }
+
+    result.origin = result.origin || this.getDefaultNpmPluginOrigin(plugin)
+    result.origin.version = result.origin.version || plugin.version
+
+    return result
+  }
+
+  public getIosApiPlugin(
     plugin: PackagePath,
     projectName: string = 'UNKNOWN'
-  ): PluginConfig {
+  ): Plugin<Ios> {
     return {
-      android: {
-        moduleName: 'lib',
-        root: 'android',
-      },
-      ios: {
+      config: {
         copy: [
           {
             dest: `${projectName}/APIs`,
@@ -782,16 +847,25 @@ export class Manifest {
     }
   }
 
-  public getApiImplPluginDefaultConfig(
+  public getAndroidApiPlugin(
     plugin: PackagePath,
     projectName: string = 'UNKNOWN'
-  ): PluginConfig {
+  ): Plugin<Android> {
     return {
-      android: {
+      config: {
         moduleName: 'lib',
         root: 'android',
       },
-      ios: {
+      origin: this.getDefaultNpmPluginOrigin(plugin),
+    }
+  }
+
+  public getIosApiImplPlugin(
+    plugin: PackagePath,
+    projectName: string = 'UNKNOWN'
+  ): Plugin<Ios> {
+    return {
+      config: {
         copy: [
           {
             dest: `${projectName}/APIImpls`,
@@ -808,6 +882,19 @@ export class Manifest {
           ],
         },
         root: 'ios',
+      },
+      origin: this.getDefaultNpmPluginOrigin(plugin),
+    }
+  }
+
+  public getAndroidApiImplPlugin(
+    plugin: PackagePath,
+    projectName: string = 'UNKNOWN'
+  ): Plugin<Android> {
+    return {
+      config: {
+        moduleName: 'lib',
+        root: 'android',
       },
       origin: this.getDefaultNpmPluginOrigin(plugin),
     }

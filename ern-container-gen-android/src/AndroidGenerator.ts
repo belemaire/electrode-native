@@ -12,6 +12,8 @@ import {
   android,
   AndroidResolvedVersions,
   readPackageJson,
+  Android,
+  Plugin,
 } from 'ern-core'
 import {
   ContainerGenerator,
@@ -117,40 +119,31 @@ export default class AndroidGenerator implements ContainerGenerator {
       transitive: [],
     }
 
-    for (const plugin of config.plugins) {
-      let pluginConfig: any = await manifest.getPluginConfig(plugin)
-      if (!pluginConfig) {
+    for (const p of config.plugins) {
+      const plugin: Plugin<Android> | void = await manifest.getAndroidPlugin(p)
+      if (!plugin) {
         continue
       }
       let pluginSourcePath
-      if (plugin.basePath === 'react-native') {
+      if (p.basePath === 'react-native') {
         continue
       }
 
-      if (!pluginConfig.android) {
-        log.warn(
-          `Skipping ${
-            plugin.basePath
-          } as it does not have an Android configuration`
-        )
-        continue
-      }
-
-      injectPluginsKaxTask.text = `${injectPluginsTaskMsg} [${plugin.basePath}]`
+      injectPluginsKaxTask.text = `${injectPluginsTaskMsg} [${p.basePath}]`
 
       shell.pushd(config.pluginsDownloadDir)
 
       let pathToPluginProject
       try {
         const nativeDependencyPathInComposite = await config.composite.getNativeDependencyPath(
-          plugin
+          p
         )
 
         pluginSourcePath =
           nativeDependencyPathInComposite ||
-          (await coreUtils.downloadPluginSource(pluginConfig.origin))
+          (await coreUtils.downloadPluginSource(plugin.origin))
         if (!pluginSourcePath) {
-          throw new Error(`Was not able to retrieve ${plugin.basePath}`)
+          throw new Error(`Was not able to retrieve ${p.basePath}`)
         }
 
         if (await coreUtils.isDependencyPathNativeApiImpl(pluginSourcePath)) {
@@ -158,15 +151,12 @@ export default class AndroidGenerator implements ContainerGenerator {
           // exists in its package.json, replace pluginConfig with this one.
           const pluginPackageJson = await readPackageJson(pluginSourcePath)
           if (pluginPackageJson.ern.pluginConfig) {
-            pluginConfig = pluginPackageJson.ern.pluginConfig
+            plugin.config = pluginPackageJson.ern.pluginConfig
           }
           populateApiImplMustacheView(pluginSourcePath, mustacheView, true)
         }
 
-        pathToPluginProject = path.join(
-          pluginSourcePath,
-          pluginConfig.android.root
-        )
+        pathToPluginProject = path.join(pluginSourcePath, plugin.config.root)
       } finally {
         shell.popd()
       }
@@ -194,8 +184,8 @@ export default class AndroidGenerator implements ContainerGenerator {
           )
           shell.cp('-R', relPathToApiImplSource, absPathToCopyPluginSourceTo)
         } else {
-          const relPathToPluginSource = pluginConfig.android.moduleName
-            ? path.join(pluginConfig.android.moduleName, 'src', 'main', 'java')
+          const relPathToPluginSource = plugin.config.moduleName
+            ? path.join(plugin.config.moduleName, 'src', 'main', 'java')
             : path.join('src', 'main', 'java')
           const absPathToCopyPluginSourceTo = path.join(
             config.outDir,
@@ -206,51 +196,49 @@ export default class AndroidGenerator implements ContainerGenerator {
           shell.cp('-R', relPathToPluginSource, absPathToCopyPluginSourceTo)
         }
 
-        if (pluginConfig.android) {
-          if (pluginConfig.android.copy) {
-            handleCopyDirective(
-              pluginSourcePath,
-              config.outDir,
-              pluginConfig.android.copy
-            )
-          }
+        if (plugin.config.copy) {
+          handleCopyDirective(
+            pluginSourcePath,
+            config.outDir,
+            plugin.config.copy
+          )
+        }
 
-          const { replaceInFile } = pluginConfig.android
-          if (replaceInFile && Array.isArray(replaceInFile)) {
-            for (const r of replaceInFile) {
-              replacements.push(() => {
-                log.debug(`Performing string replacement on ${r.path}`)
-                const pathToFile = path.join(config.outDir, r.path)
-                const fileContent = fs.readFileSync(pathToFile, 'utf8')
-                const patchedFileContent = fileContent.replace(
-                  RegExp(r.string, 'g'),
-                  r.replaceWith
-                )
-                fs.writeFileSync(pathToFile, patchedFileContent, {
-                  encoding: 'utf8',
-                })
+        const { replaceInFile } = plugin.config
+        if (replaceInFile && Array.isArray(replaceInFile)) {
+          for (const r of replaceInFile) {
+            replacements.push(() => {
+              log.debug(`Performing string replacement on ${r.path}`)
+              const pathToFile = path.join(config.outDir, r.path)
+              const fileContent = fs.readFileSync(pathToFile, 'utf8')
+              const patchedFileContent = fileContent.replace(
+                RegExp(r.string, 'g'),
+                r.replaceWith
+              )
+              fs.writeFileSync(pathToFile, patchedFileContent, {
+                encoding: 'utf8',
               })
-            }
+            })
           }
+        }
 
-          if (pluginConfig.android.dependencies) {
-            const transitivePrefix = 'transitive:'
-            const filesPrefix = 'files'
-            const annotationProcessorPrefix = 'annotationProcessor:'
-            for (const dependency of pluginConfig.android.dependencies) {
-              if (dependency.startsWith(transitivePrefix)) {
-                dependencies.transitive.push(
-                  dependency.replace(transitivePrefix, '')
-                )
-              } else if (dependency.startsWith(filesPrefix)) {
-                dependencies.files.push(dependency)
-              } else if (dependency.startsWith(annotationProcessorPrefix)) {
-                dependencies.annotationProcessor.push(
-                  dependency.replace(annotationProcessorPrefix, '')
-                )
-              } else {
-                dependencies.regular.push(dependency)
-              }
+        if (plugin.config.dependencies) {
+          const transitivePrefix = 'transitive:'
+          const filesPrefix = 'files'
+          const annotationProcessorPrefix = 'annotationProcessor:'
+          for (const dependency of plugin.config.dependencies) {
+            if (dependency.startsWith(transitivePrefix)) {
+              dependencies.transitive.push(
+                dependency.replace(transitivePrefix, '')
+              )
+            } else if (dependency.startsWith(filesPrefix)) {
+              dependencies.files.push(dependency)
+            } else if (dependency.startsWith(annotationProcessorPrefix)) {
+              dependencies.annotationProcessor.push(
+                dependency.replace(annotationProcessorPrefix, '')
+              )
+            } else {
+              dependencies.regular.push(dependency)
             }
           }
         }
@@ -405,30 +393,23 @@ export default class AndroidGenerator implements ContainerGenerator {
     plugins: PackagePath[],
     outDir: string
   ): Promise<any> {
-    for (const plugin of plugins) {
-      if (plugin.basePath === 'react-native') {
+    for (const p of plugins) {
+      if (p.basePath === 'react-native') {
         continue
       }
-      const pluginConfig = await manifest.getPluginConfig(plugin)
-      if (!pluginConfig) {
+      const plugin: Plugin<Android> | void = await manifest.getAndroidPlugin(p)
+      if (!plugin) {
         continue
       }
-      if (!pluginConfig.android) {
-        log.warn(
-          `Skipping ${
-            plugin.basePath
-          } as it does not have an Android configuration`
-        )
-        continue
-      }
-      const androidPluginHook = pluginConfig.android.pluginHook
+
+      const androidPluginHook = plugin.config.pluginHook
       if (androidPluginHook) {
         log.debug(`Adding ${androidPluginHook.name}.java`)
-        if (!pluginConfig.path) {
+        if (!plugin.path) {
           throw new Error('No plugin config path was set. Cannot proceed.')
         }
         const pathToPluginConfigHook = path.join(
-          pluginConfig.path,
+          plugin.path,
           `${androidPluginHook.name}.java`
         )
         const pathToCopyPluginConfigHookTo = path.join(

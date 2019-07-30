@@ -8,6 +8,8 @@ import {
   log,
   NativePlatform,
   kax,
+  Ios,
+  Plugin,
 } from 'ern-core'
 import {
   ContainerGenerator,
@@ -172,29 +174,22 @@ export default class IosGenerator implements ContainerGenerator {
     plugins: PackagePath[],
     outDir: string
   ): Promise<any> {
-    for (const plugin of plugins) {
-      if (plugin.basePath === 'react-native') {
+    for (const p of plugins) {
+      if (p.basePath === 'react-native') {
         continue
       }
-      const pluginConfig = await manifest.getPluginConfig(plugin)
-      if (!pluginConfig) {
+      const plugin: Plugin<Ios> | void = await manifest.getIosPlugin(p)
+      if (!plugin) {
         continue
       }
-      if (!pluginConfig.ios) {
-        log.warn(
-          `${
-            plugin.basePath
-          } does not have any injection configuration for ios platform`
-        )
-        continue
-      }
-      const iOSPluginHook = pluginConfig.ios.pluginHook
+
+      const iOSPluginHook = plugin.config.pluginHook
       if (iOSPluginHook && iOSPluginHook.name) {
-        if (!pluginConfig.path) {
+        if (!plugin.path) {
           throw new Error('No plugin config path was set. Cannot proceed.')
         }
 
-        const pluginConfigPath = pluginConfig.path
+        const pluginConfigPath = plugin.path
         const pathToCopyPluginHooksTo = path.join(outDir, 'ElectrodeContainer')
 
         log.debug(`Adding ${iOSPluginHook.name}.h`)
@@ -245,24 +240,24 @@ export default class IosGenerator implements ContainerGenerator {
     pathSpec: any,
     projectSpec: any
   ) {
-    for (const plugin of plugins) {
-      const pluginConfig = await manifest.getPluginConfig(
-        plugin,
+    for (const p of plugins) {
+      const plugin: Plugin<Ios> | void = await manifest.getIosPlugin(
+        p,
         projectSpec.projectName
       )
-      if (!pluginConfig) {
+      if (!plugin) {
         continue
       }
       shell.pushd(pathSpec.pluginsDownloadDirectory)
       try {
         const nativeDependencyPathInComposite = await composite.getNativeDependencyPath(
-          plugin
+          p
         )
         const pluginSourcePath =
           nativeDependencyPathInComposite ||
-          (await utils.downloadPluginSource(pluginConfig.origin))
+          (await utils.downloadPluginSource(plugin.origin))
         if (!pluginSourcePath) {
-          throw new Error(`Was not able to retrieve ${plugin.basePath}`)
+          throw new Error(`Was not able to retrieve ${p.basePath}`)
         }
 
         if (await utils.isDependencyPathNativeApiImpl(pluginSourcePath)) {

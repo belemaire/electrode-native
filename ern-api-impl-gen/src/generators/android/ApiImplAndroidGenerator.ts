@@ -6,8 +6,9 @@ import {
   manifest,
   Platform,
   log,
-  PluginConfig,
+  Plugin,
   android,
+  Android,
 } from 'ern-core'
 import fs from 'fs'
 import path from 'path'
@@ -113,7 +114,7 @@ export default class ApiImplAndroidGenerator implements ApiImplGeneratable {
       )
       let pluginPath: PackagePath
       for (pluginPath of pluginsPaths) {
-        const pluginConfig = await manifest.getPluginConfig(pluginPath)
+        const pluginConfig = await manifest.getAndroidPlugin(pluginPath)
         if (pluginConfig) {
           log.debug(`Copying ${pluginPath.basePath} to ${outputDirectory}`)
           this.copyPluginToOutput(
@@ -140,18 +141,15 @@ export default class ApiImplAndroidGenerator implements ApiImplGeneratable {
     paths: any,
     pluginOutputDirectory: string,
     pluginPath: PackagePath,
-    pluginConfig: PluginConfig
+    plugin: Plugin<Android>
   ) {
-    if (!pluginConfig.android) {
-      throw new Error('Missing android plugin configuration')
-    }
     log.debug(`injecting ${pluginPath.basePath} code.`)
     const pluginSrcDirectory = path.join(
       paths.pluginsDownloadDirectory,
       'node_modules',
       pluginPath.basePath,
       'android',
-      pluginConfig.android.moduleName,
+      plugin.config.moduleName,
       SRC_MAIN_JAVA_DIR,
       '*'
     )
