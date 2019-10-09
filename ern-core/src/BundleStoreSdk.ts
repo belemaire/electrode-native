@@ -1,13 +1,19 @@
 import * as fs from 'fs'
 import got from 'got'
 import FormData from 'form-data'
+import { createProxyAgentFromErnConfig } from './createProxyAgent'
 
 export class BundleStoreSdk {
+  public readonly gotCommonOpts = {
+    agent: createProxyAgentFromErnConfig('bundleStoreProxy'),
+  }
+
   constructor(public readonly host: string) {}
 
   public async createStore({ store }: { store: string }): Promise<string> {
     try {
       const res = await got.post(`http://${this.host}/stores/${store}`, {
+        ...this.gotCommonOpts,
         json: true,
       })
       return res.body.accessKey
@@ -23,6 +29,7 @@ export class BundleStoreSdk {
   }): Promise<{ id: string }> {
     try {
       const res = await got.get(`http://${this.host}/stores`, {
+        ...this.gotCommonOpts,
         json: true,
         query: `accessKey=${accessKey}`,
       })
@@ -36,6 +43,7 @@ export class BundleStoreSdk {
     try {
       const storeId = await this.getStoreByAccessKey({ accessKey })
       await got.delete(`http://${this.host}/stores/${storeId}`, {
+        ...this.gotCommonOpts,
         headers: {
           'ERN-BUNDLE-STORE-ACCESS-KEY': accessKey,
         },
@@ -68,6 +76,7 @@ export class BundleStoreSdk {
       const res = await got.post(
         `http://${this.host}/bundles/${store}/${platform}`,
         {
+          ...this.gotCommonOpts,
           body: form,
           headers: {
             'ERN-BUNDLE-STORE-ACCESS-KEY': accessKey,
@@ -86,7 +95,10 @@ export class BundleStoreSdk {
       const zippedAssetsFileRs = fs.createReadStream(zipPath)
       const form = new FormData()
       form.append('assets', zippedAssetsFileRs)
-      await got.post(`http://${this.host}/assets`, { body: form })
+      await got.post(`http://${this.host}/assets`, {
+        ...this.gotCommonOpts,
+        body: form,
+      })
     } catch (err) {
       throw new Error(err.response ? err.response.text : err.message)
     }
@@ -95,7 +107,7 @@ export class BundleStoreSdk {
   public async assetsDelta(assets: string[]): Promise<string[]> {
     try {
       const res = await got.post(`http://${this.host}/assets/delta`, {
-        body: { assets },
+        body: { ...this.gotCommonOpts, assets },
         json: true,
       })
       return res.body
