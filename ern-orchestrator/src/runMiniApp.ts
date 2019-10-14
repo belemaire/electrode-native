@@ -198,6 +198,47 @@ export async function runMiniApp(
       publisher: PackagePath.fromString('ern-container-publisher-maven'),
       url: getDefaultMavenLocalDirectory(),
     })
+  } else {
+    const pathToIosContainer = path.join(
+      Platform.iosRunnerContainerPublicationDirectory,
+      entryMiniAppName.toLowerCase()
+    )
+    const pathToRunnerPbxProj = path.join(
+      pathToRunner,
+      'ErnRunner.xcodeproj/project.pbxproj'
+    )
+
+    if (fs.existsSync(pathToRunnerPbxProj)) {
+      const runnerPbxProjContent = fs
+        .readFileSync(pathToRunnerPbxProj)
+        .toString()
+      // "old" here means runner project generated before the multi runner/container feature was introduced
+      const isOldIosRunner = runnerPbxProjContent.includes(
+        'PRODUCT_BUNDLE_IDENTIFIER = com.walmartlabs.ern;'
+      )
+      if (isOldIosRunner) {
+        const oldContainerPath = replaceHomePathWithTidle(
+          path.join(Platform.containerGenDirectory, 'out/ios')
+        )
+        // patch old container path to new location based on miniapp name
+        const patchedRunnerPbxProjContent = runnerPbxProjContent.replace(
+          `${oldContainerPath}/ElectrodeContainer.xcodeproj`,
+          replaceHomePathWithTidle(
+            `${pathToIosContainer}/ElectrodeContainer.xcodeproj`
+          )
+        )
+        fs.writeFileSync(pathToRunnerPbxProj, patchedRunnerPbxProjContent)
+      }
+    }
+
+    shell.rm('-rf', pathToIosContainer)
+    await publishContainer({
+      containerPath: outDir,
+      containerVersion: '1.0.0',
+      platform: 'ios',
+      publisher: PackagePath.fromString('ern-container-publisher-fs'),
+      url: pathToIosContainer,
+    })
   }
 
   const compositeNativeDeps = await containerGenResult.config.composite.getNativeDependencies()
@@ -205,11 +246,6 @@ export async function runMiniApp(
     compositeNativeDeps.all,
     p => p.packagePath.basePath === 'react-native'
   )
-
-  const hasErnNavigation =
-    YarnLockParser.fromPath(
-      path.join(containerGenResult.config.composite.path, 'yarn.lock')
-    ).findPackage(PackagePath.fromString('ern-navigation')).length > 0
 
   const runnerGeneratorConfig: RunnerGeneratorConfig = {
     extra: {
@@ -265,4 +301,8 @@ export async function runMiniApp(
   }
 
   await launchRunner(launchRunnerConfig)
+}
+
+function replaceHomePathWithTidle(p: string) {
+  return process.env.HOME ? p.replace(process.env.HOME, '~') : p
 }

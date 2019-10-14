@@ -6,12 +6,13 @@ import {
   injectReactNativeVersionKeysInObject,
 } from 'ern-core'
 import path from 'path'
+import Platform from 'ern-core/src/Platform'
 
 const defaultReactNativePackagerHost = 'localhost'
 const defaultReactNativePackagerPort = '8081'
 const runnerHullPath = path.join(__dirname, 'hull')
 
-export default class IosRunerGenerator implements RunnerGenerator {
+export default class IosRunnerGenerator implements RunnerGenerator {
   public get platform(): NativePlatform {
     return 'ios'
   }
@@ -57,11 +58,15 @@ export default class IosRunerGenerator implements RunnerGenerator {
 
   public createMustacheView({ config }: { config: RunnerGeneratorConfig }) {
     const pathToElectrodeContainerXcodeProj = replaceHomePathWithTidle(
-      path.join(config.extra.containerGenWorkingDir, 'out', 'ios')
+      path.join(
+        Platform.iosRunnerContainerPublicationDirectory,
+        config.mainMiniAppName.toLowerCase()
+      )
     )
     const mustacheView = {
       isReactNativeDevSupportEnabled:
         config.reactNativeDevSupportEnabled === true ? 'YES' : 'NO',
+      lowerCaseMiniAppName: config.mainMiniAppName.toLowerCase(),
       miniAppName: config.mainMiniAppName,
       packagerHost:
         config.reactNativePackagerHost || defaultReactNativePackagerHost,

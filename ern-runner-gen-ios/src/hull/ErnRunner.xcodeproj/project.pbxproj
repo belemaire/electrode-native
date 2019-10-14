@@ -60,7 +60,7 @@
 		22D3971F1F50C6FE00C40FE2 /* RunnerConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RunnerConfig.h; sourceTree = "<group>"; };
 		22D397201F50C6FE00C40FE2 /* RunnerConfig.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RunnerConfig.m; sourceTree = "<group>"; };
 		302CACCA1EF0A6CF00B1ED18 /* ElectrodeContainer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ElectrodeContainer.xcodeproj; path = "{{{pathToElectrodeContainerXcodeProj}}}/ElectrodeContainer.xcodeproj"; sourceTree = "<group>"; };
-		304F3E951EEF455C00F1E36B /* ErnRunner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ErnRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		304F3E951EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ErnRunner{{{pascalCaseMiniAppName}}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		304F3E991EEF455C00F1E36B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		304F3E9B1EEF455C00F1E36B /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		304F3E9C1EEF455C00F1E36B /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -97,7 +97,7 @@
 			isa = PBXGroup;
 			children = (
 				304F3EB01EEF58A300F1E36B /* Frameworks */,
-				304F3E971EEF455C00F1E36B /* ErnRunner */,
+				304F3E971EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}} */,
 				304F3E961EEF455C00F1E36B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -105,12 +105,12 @@
 		304F3E961EEF455C00F1E36B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				304F3E951EEF455C00F1E36B /* ErnRunner.app */,
+				304F3E951EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}}.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		304F3E971EEF455C00F1E36B /* ErnRunner */ = {
+		304F3E971EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}} */ = {
 			isa = PBXGroup;
 			children = (
 				22D3971F1F50C6FE00C40FE2 /* RunnerConfig.h */,
@@ -147,9 +147,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		304F3E941EEF455C00F1E36B /* ErnRunner */ = {
+		304F3E941EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}} */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 304F3EAC1EEF455C00F1E36B /* Build configuration list for PBXNativeTarget "ErnRunner" */;
+			buildConfigurationList = 304F3EAC1EEF455C00F1E36B /* Build configuration list for PBXNativeTarget "ErnRunner{{{pascalCaseMiniAppName}}}" */;
 			buildPhases = (
 				304F3E911EEF455C00F1E36B /* Sources */,
 				304F3E921EEF455C00F1E36B /* Frameworks */,
@@ -161,9 +161,9 @@
 			dependencies = (
 				302CACE21EF0A6D600B1ED18 /* PBXTargetDependency */,
 			);
-			name = ErnRunner;
-			productName = ErnRunner;
-			productReference = 304F3E951EEF455C00F1E36B /* ErnRunner.app */;
+			name = ErnRunner{{{pascalCaseMiniAppName}}};
+			productName = ErnRunner{{{pascalCaseMiniAppName}}};
+			productReference = 304F3E951EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}}.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -181,7 +181,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 304F3E901EEF455C00F1E36B /* Build configuration list for PBXProject "ErnRunner" */;
+			buildConfigurationList = 304F3E901EEF455C00F1E36B /* Build configuration list for PBXProject "ErnRunner{{{pascalCaseMiniAppName}}}" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -200,7 +200,7 @@
 			);
 			projectRoot = "";
 			targets = (
-				304F3E941EEF455C00F1E36B /* ErnRunner */,
+				304F3E941EEF455C00F1E36B /* ErnRunner{{{pascalCaseMiniAppName}}} */,
 			);
 		};
 /* End PBXProject section */
@@ -376,7 +376,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = ErnRunner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ernrunner;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walmartlabs.ern.{{{lowerCaseMiniAppName}}};
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -388,7 +388,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = ErnRunner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ernrunner;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walmartlabs.ern.{{{lowerCaseMiniAppName}}};
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -396,7 +396,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		304F3E901EEF455C00F1E36B /* Build configuration list for PBXProject "ErnRunner" */ = {
+		304F3E901EEF455C00F1E36B /* Build configuration list for PBXProject "ErnRunner{{{pascalCaseMiniAppName}}}" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				304F3EAA1EEF455C00F1E36B /* Debug */,
@@ -405,7 +405,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		304F3EAC1EEF455C00F1E36B /* Build configuration list for PBXNativeTarget "ErnRunner" */ = {
+		304F3EAC1EEF455C00F1E36B /* Build configuration list for PBXNativeTarget "ErnRunner{{{pascalCaseMiniAppName}}}" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				304F3EAD1EEF455C00F1E36B /* Debug */,

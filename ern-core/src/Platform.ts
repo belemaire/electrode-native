@@ -55,6 +55,10 @@ export default class Platform {
     return path.join(this.rootDirectory, 'containergen')
   }
 
+  static get iosRunnerContainerPublicationDirectory(): string {
+    return path.join(this.rootDirectory, 'ios-runner-containers')
+  }
+
   public static getContainerGenOutDirectory(platform: NativePlatform): string {
     return path.join(this.containerGenDirectory, 'out', platform)
   }
