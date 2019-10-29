@@ -44,7 +44,7 @@
     "update-notifier": "^1.0.3"
   },
   "engines": {
-    "node": ">=6",
+    "node": ">=8",
     "npm": ">=3"
   }
 }

@@ -54,7 +54,7 @@
     "ern-instrument-dist": "bin/ern-instrument-dist.js"
   },
   "engines": {
-    "node": ">=4.5"
+    "node": ">=8"
   },
   "author": "",
   "license": "Apache-2.0"
