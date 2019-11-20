@@ -1,0 +1,1 @@
+Any resources associated to the JS bundle will be stored in this directory

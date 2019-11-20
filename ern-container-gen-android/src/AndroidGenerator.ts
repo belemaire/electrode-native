@@ -123,6 +123,11 @@ export default class AndroidGenerator implements ContainerGenerator {
     const versions = android.resolveAndroidVersions(config.androidConfig)
     mustacheView = Object.assign(mustacheView, versions)
 
+    const resourceDirectories = [
+      'src/main/res/bundle',
+      'src/main/res/devassist',
+    ]
+
     const injectPluginsTaskMsg = 'Injecting Native Dependencies'
     const injectPluginsKaxTask = kax.task(injectPluginsTaskMsg)
 
@@ -212,6 +217,22 @@ export default class AndroidGenerator implements ContainerGenerator {
             )
           }
 
+          if (pluginConfig.android.copyResources) {
+            const resourceSrcDir = `src/main/res/${plugin.basePath.replace(
+              '@',
+              ''
+            )}`
+            resourceDirectories.push(resourceSrcDir)
+            handleCopyDirective(
+              pluginSourcePath,
+              config.outDir,
+              pluginConfig.android.copyResources.map(r => ({
+                dest: path.join('lib', resourceSrcDir),
+                source: `${r}/*`,
+              }))
+            )
+          }
+
           const { replaceInFile } = pluginConfig.android
           if (replaceInFile && Array.isArray(replaceInFile)) {
             for (const r of replaceInFile) {
@@ -265,6 +286,8 @@ export default class AndroidGenerator implements ContainerGenerator {
         shell.popd()
       }
     }
+
+    mustacheView.resSrcDirs = resourceDirectories.map(d => `"${d}"`).join(',\n')
 
     // Dedupe repositories and permissions
     mustacheView.customRepos = _.uniq(mustacheView.customRepos)
