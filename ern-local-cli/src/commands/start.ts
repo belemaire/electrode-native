@@ -177,7 +177,6 @@ export const commandHandler = async ({
     miniapps,
     packageName,
     port,
-    watchNodeModules,
   })
 }
 

@@ -9,7 +9,7 @@ import {
   NativePlatform,
 } from 'ern-core'
 import { CompositeGeneratorConfig } from './types'
-import { generateComposite } from './generateComposite'
+import { generateComposite, generateStartComposite } from './generateComposite'
 import path from 'path'
 
 export class Composite {
@@ -17,6 +17,13 @@ export class Composite {
     config: CompositeGeneratorConfig
   ): Promise<Composite> {
     await generateComposite(config)
+    return new Composite(config)
+  }
+
+  public static async generateStartComposite(
+    config: CompositeGeneratorConfig
+  ): Promise<Composite> {
+    await generateStartComposite(config)
     return new Composite(config)
   }
 

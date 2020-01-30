@@ -8,6 +8,7 @@ import {
   writePackageJson,
   kax,
   YarnLockParser,
+  findNativeDependencies,
 } from 'ern-core'
 import { cleanupCompositeDir } from './cleanupCompositeDir'
 import {
@@ -22,6 +23,8 @@ import semver from 'semver'
 import _ from 'lodash'
 import { CompositeGeneratorConfig } from './types'
 import uuidv4 from 'uuid/v4'
+import os from 'os'
+import beautify from 'js-beautify'
 
 export async function generateComposite(config: CompositeGeneratorConfig) {
   log.debug(`generateComposite config : ${JSON.stringify(config, null, 2)}`)
@@ -174,6 +177,172 @@ async function generateFullComposite(
   }
 }
 
+export async function generateStartComposite(config: CompositeGeneratorConfig) {
+  const {
+    outDir,
+    extraJsDependencies = [],
+    jsApiImplDependencies = [],
+    miniApps,
+  } = config
+
+  const reuseCompositeDir = await fs.pathExists(outDir)
+
+  if (!(await fs.pathExists(outDir))) {
+    shell.mkdir('-p', outDir)
+  }
+
+  shell.pushd(outDir)
+
+  try {
+    const linkedMiniApps = miniApps.filter(m => m.isFilePath)
+    const unlinkedMiniApps = miniApps.filter(m => !m.isFilePath)
+
+    // Install all JS API Implementations and unlinked MiniApps
+    if (unlinkedMiniApps.length > 0 || jsApiImplDependencies.length > 0) {
+      await installJsPackages({
+        jsApiImplDependencies,
+        miniApps: unlinkedMiniApps,
+        outDir,
+      })
+    } else if (!reuseCompositeDir) {
+      await yarn.init()
+    }
+
+    const compositePJson = await readPackageJson(outDir)
+    const unlinkedPackages = Object.keys(compositePJson.dependencies || {})
+
+    // List current top level native modules that have been installed
+    // alongside with JS APIs implementations / unlinked MiniApps
+    const tlNativeDependencies = await findNativeDependencies(
+      path.join(outDir, 'node_modules')
+    )
+    let allNativeModules: PackagePath[] = [
+      ...tlNativeDependencies.thirdPartyInManifest.map(t => t.packagePath),
+      ...tlNativeDependencies.thirdPartyNotInManifest.map(t => t.packagePath),
+    ]
+
+    // List all native modules used by linked MiniApps
+    for (const linkedMiniApp of linkedMiniApps) {
+      const nativeDependencies = await findNativeDependencies(
+        path.join(linkedMiniApp.basePath, 'node_modules')
+      )
+      const nativeModules = [
+        ...nativeDependencies.thirdPartyInManifest.map(t => t.packagePath),
+        ...nativeDependencies.thirdPartyNotInManifest.map(t => t.packagePath),
+      ]
+      allNativeModules.push(...nativeModules)
+    }
+
+    // Dedupe native modules array (based on name)
+    allNativeModules = _.uniqWith(
+      allNativeModules,
+      (a, b) => a.basePath === b.basePath
+    )
+    log.trace(`allNativeModules: ${allNativeModules}`)
+    extraJsDependencies.push(...allNativeModules)
+
+    const biloute: Array<[string, string]> = []
+    const linkedMiniAppsPackages: string[] = []
+    for (const linkedMiniApp of linkedMiniApps) {
+      const pjson: any = await readPackageJson(linkedMiniApp.basePath)
+      linkedMiniAppsPackages.push(pjson.name)
+      biloute.push([pjson.name, linkedMiniApp.basePath])
+    }
+
+    const miniAppsAndJsApiImplsPackages = [
+      ...unlinkedPackages,
+      ...linkedMiniAppsPackages,
+    ]
+
+    await addStartScriptToPackageJson({ outDir })
+    await createIndexJsWithImports({
+      dependencies: miniAppsAndJsApiImplsPackages,
+      outDir,
+    })
+
+    let depsToInstall
+    if (reuseCompositeDir) {
+      const existingDependencies = Object.keys(
+        compositePJson.dependencies
+      ).map(k =>
+        PackagePath.fromString(`${k}@${compositePJson.dependencies[k]}`)
+      )
+      depsToInstall = _.difference(
+        extraJsDependencies.map(p => p.fullPath),
+        existingDependencies.map(p => p.fullPath)
+      )
+    } else {
+      depsToInstall = [
+        PackagePath.fromString('ern-bundle-store-metro-asset-plugin'),
+        PackagePath.fromString('react@16.8.6'),
+        ...extraJsDependencies,
+      ]
+    }
+
+    await installExtraJsDependencies({
+      extraJsDependencies: depsToInstall,
+      outDir,
+    })
+
+    await addBabelrcRoots({
+      dependencies: miniAppsAndJsApiImplsPackages,
+      outDir,
+    })
+    await createCompositeBabelRc({
+      dependencies: miniAppsAndJsApiImplsPackages,
+      outDir,
+    })
+
+    // also add react (even though if it's not a native module we need
+    // to add it to exlusions because of haste)
+    allNativeModules.push(PackagePath.fromString('react'))
+
+    const blacklistRe: RegExp[] = []
+    linkedMiniApps.forEach(m => {
+      blacklistRe.push(
+        ...allNativeModules.map(
+          n =>
+            new RegExp(
+              `.*${path.normalize(m.basePath)}/node_modules/${n.basePath}/.*`
+            )
+        )
+      )
+    })
+
+    const extraNodeModules = {}
+    allNativeModules.forEach(m => {
+      extraNodeModules[m.basePath] = `${outDir}/node_modules/${m.basePath}`
+    })
+
+    const watchFolders = linkedMiniApps.map(m => m.basePath)
+
+    await createMetroConfigJs({
+      blacklistRe,
+      extraNodeModules,
+      outDir,
+      projectRoot: outDir,
+      watchFolders,
+    })
+    await createRnCliConfig({ outDir })
+
+    if (!reuseCompositeDir) {
+      const rnVersion = await getCompositeReactNativeVersion({ outDir })
+      if (semver.lt(rnVersion, '0.60.0')) {
+        await patchMetro51({ outDir })
+      }
+      await patchMetroBabelEnv({ outDir })
+    }
+    // create linked miniapps symlinks
+    for (const [name, p] of biloute) {
+      if (!(await fs.pathExists(`${outDir}/node_modules/${name}`))) {
+        await fs.symlink(p, `${outDir}/node_modules/${name}`)
+      }
+    }
+  } finally {
+    shell.popd()
+  }
+}
+
 async function addReactNativeDependencyToPackageJson(
   dir: string,
   version: string
@@ -267,6 +436,22 @@ async function createIndexJsBasedOnPackageJson({ outDir }: { outDir: string }) {
   await fs.writeFile(path.join(outDir, 'index.android.js'), entryIndexJsContent)
 }
 
+async function createIndexJsWithImports({
+  outDir,
+  dependencies,
+}: {
+  outDir: string
+  dependencies: string[]
+}) {
+  let entryIndexJsContent = ''
+
+  for (const dependency of dependencies) {
+    entryIndexJsContent += `import '${dependency}'\n`
+  }
+
+  await fs.writeFile(path.join(outDir, 'index.js'), entryIndexJsContent)
+}
+
 async function createCompositeImportsJsBasedOnPackageJson({
   outDir,
 }: {
@@ -292,14 +477,20 @@ async function addStartScriptToPackageJson({ outDir }: { outDir: string }) {
   await writePackageJson(outDir, packageJson)
 }
 
-async function addBabelrcRoots({ outDir }: { outDir: string }) {
+async function addBabelrcRoots({
+  outDir,
+  dependencies,
+}: {
+  outDir: string
+  dependencies?: string[]
+}) {
   const compositePackageJson = await readPackageJson(outDir)
   const compositeNodeModulesPath = path.join(outDir, 'node_modules')
   const compositeReactNativeVersion = await getCompositeReactNativeVersion({
     outDir,
   })
   const compositeMetroVersion = await getCompositeMetroVersion({ outDir })
-  const dependencies: string[] = Object.keys(compositePackageJson.dependencies)
+  dependencies = dependencies || Object.keys(compositePackageJson.dependencies)
 
   // Any dependency that has the useBabelRc set in their package.json
   // as follow ...
@@ -515,7 +706,13 @@ export async function applyYarnResolutions({
   }
 }
 
-async function createCompositeBabelRc({ outDir }: { outDir: string }) {
+async function createCompositeBabelRc({
+  outDir,
+  dependencies,
+}: {
+  outDir: string
+  dependencies?: string[]
+}) {
   log.debug('Creating top level composite .babelrc')
   const compositePackageJson = await readPackageJson(outDir)
   const compositeNodeModulesPath = path.join(outDir, 'node_modules')
@@ -533,8 +730,10 @@ async function createCompositeBabelRc({ outDir }: { outDir: string }) {
   log.debug(
     'Taking care of potential Babel module-resolver plugins used by MiniApps'
   )
+
   let moduleResolverAliases: { [k: string]: any } = {}
-  for (const dependency of Object.keys(compositePackageJson.dependencies)) {
+  dependencies = dependencies || Object.keys(compositePackageJson.dependencies)
+  for (const dependency of dependencies) {
     const miniAppPackagePath = path.join(compositeNodeModulesPath, dependency)
     let miniAppPackageJson
     try {
@@ -619,11 +818,31 @@ async function createCompositeBabelRc({ outDir }: { outDir: string }) {
   )
 }
 
-async function createMetroConfigJs({ outDir }: { outDir: string }) {
+async function createMetroConfigJs({
+  outDir,
+  projectRoot,
+  blacklistRe,
+  extraNodeModules,
+  watchFolders,
+}: {
+  outDir: string
+  projectRoot?: string
+  blacklistRe?: RegExp[]
+  extraNodeModules?: { [pkg: string]: string }
+  watchFolders?: string[]
+}) {
   return fs.writeFile(
     path.join(outDir, 'metro.config.js'),
-    `const blacklist = require('metro-config/src/defaults/blacklist');
+    beautify.js(`const blacklist = require('metro-config/src/defaults/blacklist');
 module.exports = {
+  ${projectRoot ? `projectRoot: "${projectRoot}",` : ''}
+  ${
+    watchFolders
+      ? `watchFolders: [ 
+        ${watchFolders.map(x => `"${x}"`).join(`,${os.EOL}`)} 
+      ],`
+      : ''
+  }
   resolver: {
     blacklistRE: blacklist([
       // Ignore IntelliJ directories
@@ -632,7 +851,13 @@ module.exports = {
       /.*\\.git\\/.*/,
       // Ignore android directories
       /.*\\/app\\/build\\/.*/,
+      ${blacklistRe ? blacklistRe.join(`,${os.EOL}`) : ''}
     ]),
+    ${
+      extraNodeModules
+        ? `extraNodeModules: ${JSON.stringify(extraNodeModules, null, 2)},`
+        : ''
+    }
     assetExts: [
       // Image formats
       "bmp",
@@ -677,7 +902,7 @@ module.exports = {
     assetPlugins: ['ern-bundle-store-metro-asset-plugin'],
   },
 };
-`
+`)
   )
 }
 
