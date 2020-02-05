@@ -5,12 +5,15 @@ import {
   AppPlatformDescriptor,
   AppVersionDescriptor,
   AnyAppDescriptor,
+  Packages,
+  PackageType
 } from 'ern-core'
 import { exists, joiValidate, normalizeCauldronFilePath } from './util'
 import _ from 'lodash'
 import {
   Cauldron,
   CauldronCodePushEntry,
+  CauldronContainerPackages,
   CauldronNativeApp,
   CauldronNativeAppPlatform,
   CauldronNativeAppVersion,
@@ -18,6 +21,7 @@ import {
   ICauldronFileStore,
   CauldronConfigLevel,
   CauldronObject,
+  CauldronPackages
 } from './types'
 import upgradeScripts from './upgrade-scripts/scripts'
 import path from 'path'
@@ -26,20 +30,6 @@ import semver from 'semver'
 
 const yarnLocksStoreDirectory = 'yarnlocks'
 const bundlesStoreDirectory = 'bundles'
-
-export type ContainerJsPackagesBranchesArrayKey =
-  | 'jsApiImplsBranches'
-  | 'miniAppsBranches'
-
-export type ContainerJsPackagesVersionsArrayKey = 'jsApiImpls' | 'miniApps'
-
-export type ContainerJsPackagesArrayKey =
-  | ContainerJsPackagesBranchesArrayKey
-  | ContainerJsPackagesVersionsArrayKey
-
-export type ContainerPackagesArrayKey =
-  | ContainerJsPackagesArrayKey
-  | 'nativeDeps'
 
 export default class CauldronApi {
   private readonly documentStore: ICauldronDocumentStore
@@ -117,8 +107,8 @@ export default class CauldronApi {
     return descriptor instanceof AppVersionDescriptor
       ? this.getVersion(descriptor)
       : descriptor instanceof AppPlatformDescriptor
-      ? this.getPlatform(descriptor)
-      : this.getNativeApplication(descriptor)
+        ? this.getPlatform(descriptor)
+        : this.getNativeApplication(descriptor)
   }
 
   public async getNativeApplications(): Promise<CauldronNativeApp[]> {
@@ -130,8 +120,8 @@ export default class CauldronApi {
     return descriptor instanceof AppVersionDescriptor
       ? this.hasVersion(descriptor)
       : descriptor instanceof AppPlatformDescriptor
-      ? this.hasPlatform(descriptor)
-      : this.hasNativeApplication(descriptor)
+        ? this.hasPlatform(descriptor)
+        : this.hasNativeApplication(descriptor)
   }
 
   public async hasNativeApplication(
@@ -227,116 +217,62 @@ export default class CauldronApi {
     return deploymentName ? version.codePush[deploymentName] : version.codePush
   }
 
-  public async getContainerMiniApps(
-    descriptor: AppVersionDescriptor
-  ): Promise<string[]> {
-    const version = await this.getVersion(descriptor)
-    return version.container.miniApps
-  }
-
-  public async getContainerMiniAppsBranches(
-    descriptor: AppVersionDescriptor
-  ): Promise<string[]> {
-    const version = await this.getVersion(descriptor)
-    return version.container.miniAppsBranches || []
-  }
-
-  public async getContainerJsApiImplsBranches(
-    descriptor: AppVersionDescriptor
-  ): Promise<string[]> {
-    const version = await this.getVersion(descriptor)
-    return version.container.jsApiImplsBranches || []
-  }
-
-  public async getContainerJsApiImpls(
-    descriptor: AppVersionDescriptor
-  ): Promise<string[]> {
-    const version = await this.getVersion(descriptor)
-    return version.container.jsApiImpls
-  }
-
-  public async getContainerJsApiImpl(
-    descriptor: AppVersionDescriptor,
-    jsApiImplName: string
-  ): Promise<string> {
-    const jsApiImpls = await this.getContainerJsApiImpls(descriptor)
-    const result = _.find(
-      jsApiImpls,
-      x => x === jsApiImplName || x.startsWith(`${jsApiImplName}@`)
-    )
-    if (!result) {
-      throw new Error(
-        `Cannot find ${jsApiImplName} JS API implementation in ${descriptor.toString()} Container`
-      )
+  public typeStr(type: PackageType): string {
+    switch (type) {
+      case PackageType.API: return 'apis'
+      case PackageType.JS_API_IMPL: return 'jsApiImpls'
+      case PackageType.MINIAPP: return 'miniApps'
+      case PackageType.NATIVE_API_IMPL: return 'nativeApiImpls'
+      case PackageType.NATIVE_MODULE: return 'nativeModules'
     }
-    return result
   }
 
-  public async isMiniAppInContainer(
-    descriptor: AppVersionDescriptor,
-    miniAppName: string
-  ): Promise<boolean> {
-    const miniApps = await this.getContainerMiniApps(descriptor)
-    const result = _.find(miniApps, m => m.startsWith(miniAppName))
-    if (!result) {
-      return false
+  public async getContainerPackages(descriptor: AppVersionDescriptor): Promise<CauldronContainerPackages>
+  public async getContainerPackages(descriptor: AppVersionDescriptor, type: PackageType): Promise<CauldronPackages>
+  public async getContainerPackages(descriptor: AppVersionDescriptor, type?: PackageType): Promise<CauldronContainerPackages | CauldronPackages> {
+    const version = await this.getVersion(descriptor)
+    if (type && !this.hasPackagesOfType(descriptor, type)) {
+      throw new Error(`No ${this.typeStr(type)} packages were found in ${descriptor}`)
+    }
+    return type ? version.container.packages[this.typeStr(type)] : version.container.packages
+  }
+
+  public async hasContainerPackage(descriptor: AppVersionDescriptor, name: string, type?: PackageType): Promise<boolean> {
+    if (type) {
+      const packages = await this.getContainerPackages(descriptor, type)
+      return !!packages[name]
     } else {
-      return true
-    }
-  }
-
-  public async getContainerMiniApp(
-    descriptor: AppVersionDescriptor,
-    miniAppName: string
-  ): Promise<string> {
-    const miniApps = await this.getContainerMiniApps(descriptor)
-    const result = _.find(miniApps, m => m.startsWith(miniAppName))
-    if (!result) {
-      throw new Error(
-        `Cannot find ${miniAppName} MiniApp in ${descriptor.toString()} Container`
-      )
-    }
-    return result
-  }
-
-  public async getNativeDependencies(
-    descriptor: AppVersionDescriptor
-  ): Promise<string[]> {
-    const version = await this.getVersion(descriptor)
-    return version.container.nativeDeps
-  }
-
-  public async isNativeDependencyInContainer(
-    descriptor: AppVersionDescriptor,
-    nativeDepName: string
-  ): Promise<boolean> {
-    const nativeDeps = await this.getNativeDependencies(descriptor)
-    const result = _.find(
-      nativeDeps,
-      x => x === nativeDepName || x.startsWith(`${nativeDepName}@`)
-    )
-    if (!result) {
+      const packages = await this.getContainerPackages(descriptor)
+      for (const k of Object.keys(packages)) {
+        if (!!packages[k][name]) {
+          return true
+        }
+      }
       return false
-    } else {
-      return true
     }
   }
 
-  public async getContainerNativeDependency(
-    descriptor: AppVersionDescriptor,
-    nativeDepName: string
-  ): Promise<string> {
-    const nativeDeps = await this.getNativeDependencies(descriptor)
-    const result = _.find(
-      nativeDeps,
-      x => x === nativeDepName || x.startsWith(`${nativeDepName}@`)
-    )
-    if (!result) {
-      throw new Error(
-        `Cannot find ${nativeDepName} native dependency in ${descriptor.toString()} Container`
-      )
+  public async getContainerPackage(descriptor: AppVersionDescriptor, name: string, type?: PackageType): Promise<string> {
+    if (!await this.hasContainerPackage(descriptor, name, type)) {
+      throw new Error(`No package named ${name} ${type ? `of type ${this.typeStr(type)}` : ''} was found in ${descriptor}`)
     }
-    return result
+    if (type) {
+      const packages = await this.getContainerPackages(descriptor, type)
+      return packages[name] as string
+    } else {
+      const packages = await this.getContainerPackages(descriptor)
+      for (const k of Object.keys(packages)) {
+        if (packages[k][name]) {
+          return packages[k][name] as string
+        }
+      }
+    }
+    return ''
+  }
+
+  public async hasPackagesOfType(descriptor: AppVersionDescriptor, type: PackageType): Promise<boolean> {
+    const version = await this.getVersion(descriptor)
+    return !!version.container.packages[this.typeStr(type)]
   }
 
   public async getConfig(descriptor?: AnyAppDescriptor): Promise<any | void> {
@@ -411,16 +347,16 @@ export default class CauldronApi {
 
   public getConfigFilePath(descriptor?: AnyAppDescriptor) {
     return descriptor
-      ? `config/${descriptor.name ? descriptor.name : ''}${
-          descriptor instanceof AppPlatformDescriptor ||
-          descriptor instanceof AppVersionDescriptor
-            ? '-' + descriptor.platform
-            : ''
-        }${
-          descriptor instanceof AppVersionDescriptor
-            ? '-' + descriptor.version
-            : ''
-        }.json`
+      ? `config / ${descriptor.name ? descriptor.name : ''} ${
+      descriptor instanceof AppPlatformDescriptor ||
+        descriptor instanceof AppVersionDescriptor
+        ? '-' + descriptor.platform
+        : ''
+      } ${
+      descriptor instanceof AppVersionDescriptor
+        ? '-' + descriptor.version
+        : ''
+      }.json`
       : 'config/default.json'
   }
 
@@ -455,10 +391,10 @@ export default class CauldronApi {
     return !descriptor
       ? this.getCauldron()
       : descriptor instanceof AppVersionDescriptor
-      ? this.getVersion(descriptor)
-      : descriptor instanceof AppPlatformDescriptor
-      ? this.getPlatform(descriptor)
-      : this.getNativeApplication(descriptor)
+        ? this.getVersion(descriptor)
+        : descriptor instanceof AppPlatformDescriptor
+          ? this.getPlatform(descriptor)
+          : this.getNativeApplication(descriptor)
   }
 
   // =====================================================================================
@@ -522,7 +458,7 @@ export default class CauldronApi {
       throw new Error(`${descriptor.name} was not found in Cauldron`)
     }
     _.remove(cauldron.nativeApps, x => x.name === descriptor.name)
-    return this.commit(`Remove ${descriptor.toString()}`)
+    return this.commit(`Remove ${descriptor.toString()} `)
   }
 
   public async createPlatform(
@@ -561,7 +497,7 @@ export default class CauldronApi {
       )
     }
     _.remove(nativeApplication.platforms, x => x.name === platform)
-    return this.commit(`Remove ${descriptor.toString()}`)
+    return this.commit(`Remove ${descriptor.toString()} `)
   }
 
   public async createVersion(
@@ -611,7 +547,7 @@ export default class CauldronApi {
       )
     }
     _.remove(platform.versions, x => x.name === versionName)
-    return this.commit(`Remove ${descriptor.toString()}`)
+    return this.commit(`Remove ${descriptor.toString()} `)
   }
 
   public async updateVersion(
@@ -625,7 +561,7 @@ export default class CauldronApi {
     const version = await this.getVersion(descriptor)
     if (validatedVersion.isReleased != null) {
       version.isReleased = validatedVersion.isReleased
-      await this.commit(`Update release status of ${descriptor.toString()}`)
+      await this.commit(`Update release status of ${descriptor.toString()} `)
     }
   }
 
@@ -635,7 +571,7 @@ export default class CauldronApi {
   ): Promise<void> {
     const version = await this.getVersion(descriptor)
     version.description = description
-    await this.commit(`Update description of ${descriptor.toString()}`)
+    await this.commit(`Update description of ${descriptor.toString()} `)
   }
 
   // ------------------------------------------------------------------------------
@@ -649,7 +585,7 @@ export default class CauldronApi {
     const platform = await this.getPlatform(descriptor)
     platform.containerVersion = newContainerVersion
     return this.commit(
-      `Update top level Container version of ${descriptor.toString()} to ${newContainerVersion}`
+      `Update top level Container version of ${descriptor.toString()} to ${newContainerVersion} `
     )
   }
 
@@ -660,7 +596,7 @@ export default class CauldronApi {
     const version = await this.getVersion(descriptor)
     version.containerVersion = newContainerVersion
     return this.commit(
-      `Update container version of ${descriptor.toString()} to ${newContainerVersion}`
+      `Update container version of ${descriptor.toString()} to ${newContainerVersion} `
     )
   }
 
@@ -689,7 +625,7 @@ export default class CauldronApi {
     const version = await this.getVersion(descriptor)
     version.container.ernVersion = ernVersion
     return this.commit(
-      `Update version of ern used to generate Container of ${descriptor.toString()}`
+      `Update version of ern used to generate Container of ${descriptor.toString()} `
     )
   }
 
@@ -727,7 +663,7 @@ export default class CauldronApi {
   ): Promise<void> {
     const version = await this.getVersion(descriptor)
     version.codePush[deploymentName] = codePushEntries
-    return this.commit(`Set codePush entries in ${descriptor.toString()}`)
+    return this.commit(`Set codePush entries in ${descriptor.toString()} `)
   }
 
   // =====================================================================================
@@ -756,7 +692,7 @@ export default class CauldronApi {
     cauldronFilePath = normalizeCauldronFilePath(cauldronFilePath)
     if (await this.hasFile({ cauldronFilePath })) {
       throw new Error(
-        `[addFile] ${cauldronFilePath} already exists. Use updateFile instead.`
+        `[addFile] ${cauldronFilePath} already exists.Use updateFile instead.`
       )
     }
     return this.fileStore.storeFile(cauldronFilePath, fileContent, fileMode)
@@ -780,7 +716,7 @@ export default class CauldronApi {
     cauldronFilePath = normalizeCauldronFilePath(cauldronFilePath)
     if (!(await this.hasFile({ cauldronFilePath }))) {
       throw new Error(
-        `[updateFile] ${cauldronFilePath} does not exist. Use addFile first.`
+        `[updateFile] ${cauldronFilePath} does not exist.Use addFile first.`
       )
     }
     return this.fileStore.storeFile(cauldronFilePath, fileContent, fileMode)
@@ -853,7 +789,7 @@ export default class CauldronApi {
     const pathToYarnLock = this.getRelativePathToYarnLock(fileName)
     await this.fileStore.storeFile(pathToYarnLock, yarnlock)
     version.yarnLocks[key] = fileName
-    await this.commit(`Add yarn.lock for ${descriptor.toString()} ${key}`)
+    await this.commit(`Add yarn.lock for ${descriptor.toString()} ${key} `)
     return fileName
   }
 
@@ -883,7 +819,7 @@ export default class CauldronApi {
   ): Promise<void> {
     const version = await this.getVersion(descriptor)
     version.yarnLocks[key] = id
-    return this.commit(`Add yarn.lock for ${descriptor.toString()} ${key}`)
+    return this.commit(`Add yarn.lock for ${descriptor.toString()} ${key} `)
   }
 
   public async getYarnLock(
@@ -921,7 +857,7 @@ export default class CauldronApi {
       if (await this.fileStore.removeFile(pathToYarnLock)) {
         delete version.yarnLocks[key]
         await this.commit(
-          `Remove yarn.lock for ${descriptor.toString()} ${key}`
+          `Remove yarn.lock for ${descriptor.toString()} ${key} `
         )
         return true
       }
@@ -945,7 +881,7 @@ export default class CauldronApi {
       )
       await this.fileStore.storeFile(pathToNewYarnLock, yarnlock)
       version.yarnLocks[key] = newYarnLockFileName
-      await this.commit(`Updated yarn.lock for ${descriptor.toString()} ${key}`)
+      await this.commit(`Updated yarn.lock for ${descriptor.toString()} ${key} `)
       return true
     }
     return false
@@ -964,7 +900,7 @@ export default class CauldronApi {
     }
     version.yarnLocks[key] = id
     await this.commit(
-      `Updated yarn.lock id for ${descriptor.toString()} ${key}`
+      `Updated yarn.lock id for ${descriptor.toString()} ${key} `
     )
   }
 
@@ -1027,106 +963,76 @@ export default class CauldronApi {
    */
   public async emptyContainer(descriptor: AppVersionDescriptor) {
     const version = await this.getVersion(descriptor)
-    version.container.jsApiImpls = []
-    version.container.miniApps = []
-    version.container.nativeDeps = []
+    version.container.packages = {}
     delete version.yarnLocks.container
-    await this.commit(`Empty Container of ${descriptor}`)
-  }
-
-  public throwIfNoVersionInPackagePath(packagePath: PackagePath) {
-    if (!packagePath.version) {
-      throw new Error(`No version/branch/tag specified in ${packagePath}`)
-    }
-  }
-
-  public async hasJsPackageBranchInContainer(
-    descriptor: AppVersionDescriptor,
-    jsPackage: PackagePath,
-    key: ContainerJsPackagesBranchesArrayKey
-  ) {
-    const container = (await this.getVersion(descriptor)).container
-    return (
-      _.find(container[key] || [], p =>
-        jsPackage.same(PackagePath.fromString(p), { ignoreVersion: true })
-      ) !== undefined
-    )
+    await this.commit(`Empty Container of ${descriptor} `)
   }
 
   public async updatePackageInContainer(
     descriptor: AppVersionDescriptor,
-    pkg: PackagePath,
-    key: ContainerPackagesArrayKey
+    name: string,
+    value: string,
+    type: PackageType
   ): Promise<void> {
-    this.throwIfNoVersionInPackagePath(pkg)
     const container = (await this.getVersion(descriptor)).container
-    const existingPkg = _.find(container[key], p =>
-      pkg.same(PackagePath.fromString(p), { ignoreVersion: true })
-    )
-    if (!existingPkg) {
-      throw new Error(
-        `${pkg.basePath} does not exist in ${descriptor} Container`
-      )
+    if (!container.packages || !container.packages[this.typeStr(type)][name]) {
+      throw new Error(`Package ${name} does not exist in ${descriptor}`)
     }
-    container[key] = _.map(container[key], e =>
-      e === existingPkg ? pkg.fullPath : e
-    )
+    container.packages[this.typeStr(type)][name] = value
     return this.commit(
-      `Update ${pkg.basePath} to version ${pkg.version} in ${descriptor} Container`
+      `Update package ${name} to ${value} in ${descriptor} Container`
     )
   }
 
   public async addPackageToContainer(
     descriptor: AppVersionDescriptor,
-    pkg: PackagePath,
-    key: ContainerPackagesArrayKey
+    name: string,
+    value: string,
+    type: PackageType
   ): Promise<void> {
-    if (!pkg.isFilePath) {
-      this.throwIfNoVersionInPackagePath(pkg)
-    }
     const container = (await this.getVersion(descriptor)).container
-    if (!container[key]) {
-      container[key] = []
-    } else if (
-      container[key]!.map(m => PackagePath.fromString(m).basePath).includes(
-        pkg.basePath
-      )
-    ) {
-      throw new Error(
-        `${pkg.basePath} is already in ${descriptor} Container. Use update instead.`
-      )
-    }
-    container[key]!.push(pkg.fullPath)
+    container.packages[this.typeStr(type)] = container.packages[this.typeStr(type)] || {}
+    container.packages[this.typeStr(type)][name] = value
     return this.commit(
-      `Add ${pkg.basePath} with version ${pkg.version} in ${descriptor} Container`
+      `Add package ${name} with value ${value} to ${descriptor} Container`
     )
   }
 
   public async removePackageFromContainer(
     descriptor: AppVersionDescriptor,
-    pkg: PackagePath,
-    key: ContainerPackagesArrayKey
+    name: string,
+    type: PackageType
   ): Promise<void> {
-    const container = (await this.getVersion(descriptor)).container
-    const existingPkg = _.find(container[key], p =>
-      pkg.same(PackagePath.fromString(p), { ignoreVersion: true })
-    )
-    if (!existingPkg) {
-      throw new Error(
-        `${pkg.basePath} does not exist in ${descriptor} Container`
-      )
-    }
-    _.remove(container[key]!, p => p === existingPkg)
-    return this.commit(`Remove ${pkg} branch from ${descriptor} Container`)
+    /* const container = (await this.getVersion(descriptor)).container
+     const existingPkg = _.find(container[key], p =>
+       pkg.same(PackagePath.fromString(p), { ignoreVersion: true })
+     )
+     if (!existingPkg) {
+       throw new Error(
+         `${pkg.basePath} does not exist in ${descriptor} Container`
+       )
+     }
+     _.remove(container[key]!, p => p === existingPkg)*/
+    // TODO
+    return this.commit(`Remove  branch from ${descriptor} Container`)
   }
 
   public async setPackagesInContainer(
     descriptor: AppVersionDescriptor,
-    pkgs: PackagePath[],
-    key: ContainerPackagesArrayKey
+    pkgs: CauldronPackages,
+    type: PackageType
   ): Promise<void> {
-    const container = (await this.getVersion(descriptor)).container
-    container[key]! = pkgs.map(p => p.fullPath).sort()
+    /* const container = (await this.getVersion(descriptor)).container
+     container[key]! = pkgs.map(p => p.fullPath).sort()*/
+    // TODO
     return this.commit(`Set native dependencies in ${descriptor} Container`)
+  }
+
+  public async copyPackages(source: AppVersionDescriptor, target: AppVersionDescriptor) {
+    // TODO better
+    const sourceContainer = (await this.getVersion(source)).container
+    const targetContainer = (await this.getVersion(target)).container
+    targetContainer.packages = sourceContainer.packages
+    return this.commit(`copy packages`)
   }
 }

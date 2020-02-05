@@ -54,6 +54,9 @@ export * from './SourceMapStoreSdk'
 export * from './config'
 export * from './PackageLinksConfig'
 export * from './listDirsRecursive'
+export * from './Packages'
+export * from './PackageType'
+export * from './PackagePathNew'
 
 export const config = _config
 export const Platform = _Platform

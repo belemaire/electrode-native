@@ -74,9 +74,7 @@ export default async function start({
 
   let resolutions
   if (descriptor) {
-    miniapps = await cauldron.getContainerMiniApps(descriptor, {
-      favorGitBranches: true,
-    })
+    miniapps = await cauldron.getContainerMiniApps(descriptor)
     const compositeGenConfig = await cauldron.getCompositeGeneratorConfig(
       descriptor
     )

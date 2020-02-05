@@ -35,7 +35,6 @@ import semver from 'semver'
 
 const PATH_TO_TEMPLATES_DIR = path.join(__dirname, 'templates')
 const PATH_TO_HULL_DIR = path.join(__dirname, 'hull')
-
 export interface AndroidDependencies {
   files: string[]
   transitive: string[]
@@ -350,11 +349,11 @@ export default class AndroidGenerator implements ContainerGenerator {
     if (semver.gte(reactNativePlugin.version, '0.60.0')) {
       this.getJavaScriptEngine(config) === JavaScriptEngine.JSC
         ? await kax
-            .task('Injecting JavaScript engine [JavaScriptCore]')
-            .run(this.injectJavaScriptCoreEngine(config))
+          .task('Injecting JavaScript engine [JavaScriptCore]')
+          .run(this.injectJavaScriptCoreEngine(config))
         : await kax
-            .task('Injecting JavaScript engine [Hermes]')
-            .run(this.injectHermesEngine(config))
+          .task('Injecting JavaScript engine [Hermes]')
+          .run(this.injectHermesEngine(config))
     }
   }
 
@@ -397,8 +396,8 @@ export default class AndroidGenerator implements ContainerGenerator {
       ? config.androidConfig.jsEngine === 'jsc'
         ? JavaScriptEngine.JSC
         : config.androidConfig.jsEngine === 'hermes'
-        ? JavaScriptEngine.HERMES
-        : JavaScriptEngine.JSC
+          ? JavaScriptEngine.HERMES
+          : JavaScriptEngine.JSC
       : JavaScriptEngine.JSC
   }
 
@@ -505,8 +504,8 @@ export default class AndroidGenerator implements ContainerGenerator {
     dependencies.regular = dependencies.regular.map(d =>
       d.startsWith('com.android.support:')
         ? `${d.slice(0, d.lastIndexOf(':'))}:${
-            androidVersions.supportLibraryVersion
-          }`
+        androidVersions.supportLibraryVersion
+        }`
         : d
     )
 
