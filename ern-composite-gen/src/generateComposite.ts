@@ -241,12 +241,12 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
     log.trace(`allNativeModules: ${allNativeModules}`)
     extraJsDependencies.push(...allNativeModules)
 
-    const biloute: Array<[string, string]> = []
+    const miniAppPathByPackageName: Array<[string, string]> = []
     const linkedMiniAppsPackages: string[] = []
     for (const linkedMiniApp of linkedMiniApps) {
       const pjson: any = await readPackageJson(linkedMiniApp.basePath)
       linkedMiniAppsPackages.push(pjson.name)
-      biloute.push([pjson.name, linkedMiniApp.basePath])
+      miniAppPathByPackageName.push([pjson.name, linkedMiniApp.basePath])
     }
 
     const miniAppsAndJsApiImplsPackages = [
@@ -333,7 +333,7 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
       await patchMetroBabelEnv({ outDir })
     }
     // create linked miniapps symlinks
-    for (const [name, p] of biloute) {
+    for (const [name, p] of miniAppPathByPackageName) {
       if (!(await fs.pathExists(`${outDir}/node_modules/${name}`))) {
         await fs.symlink(p, `${outDir}/node_modules/${name}`)
       }

@@ -78,6 +78,7 @@
     "kax": "^2.0.3",
     "lodash": "^4.17.14",
     "node-ipc":"^9.1.1",
+    "parse-github-url": "^1.0.2",
     "semver": "^5.5.0",
     "untildify": "^4.0.0",
     "treeify":"^1.1.0",
