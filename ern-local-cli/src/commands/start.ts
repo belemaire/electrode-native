@@ -123,8 +123,9 @@ export const builder = (argv: Argv) => {
 }
 
 interface StartMiniApp {
-  pkg: PackagePath
   linkedPkg?: PackagePath
+  name?: string
+  pkg: PackagePath
 }
 
 export const commandHandler = async ({
@@ -188,8 +189,9 @@ export const commandHandler = async ({
   const miniAppsLinks: { [k: string]: string } = config.get('miniAppsLinks', {})
 
   const startMiniApps: StartMiniApp[] = localPathMiniApps.map(m => ({
-    pkg: m,
     linkedPkg: m,
+    name: m.name,
+    pkg: m,
   }))
 
   //
@@ -208,9 +210,11 @@ export const commandHandler = async ({
       miniAppsLinks[miniApp.name!]
         ? {
             linkedPkg: PackagePath.fromString(miniAppsLinks[miniApp.name!]),
+            name: miniApp.name,
             pkg: miniApp,
           }
         : {
+            name: miniApp.name,
             pkg: miniApp,
           }
     )
@@ -239,102 +243,136 @@ export const commandHandler = async ({
   // prompt in subsequent runs.
 
   // Build a tuple of [package name, git parsed url] of unmatched linked miniapps.
-  const gitParsedRepoUrlByPackageName: Array<[
-    string,
-    gh.Result | null | undefined
+  const remaininingLinkedMiniAppsWithGitRepo: Array<[
+    string /* host:repo */,
+    string /* package namge */
   ]> = []
+  const remainingLinkedMiniAppsWithoutGitRepo: string[] = []
   for (const unmatchedLinkedMiniApp of unmatchedLinkedMiniApps) {
     const pJson = await readPackageJson(miniAppsLinks[unmatchedLinkedMiniApp])
-    gitParsedRepoUrlByPackageName.push([
-      pJson.name,
-      pJson.repository?.git ? gh(pJson.repository.git.url) : undefined,
-    ])
+    if (pJson.repository?.type === 'git' && pJson.repository?.url) {
+      remaininingLinkedMiniAppsWithGitRepo.push([
+        `${gh(pJson.repository.url)?.hostname}:${
+          gh(pJson.repository.url)?.name
+        }`,
+        pJson.name,
+      ])
+    } else {
+      remainingLinkedMiniAppsWithoutGitRepo.push(pJson.name)
+    }
   }
 
-  // Build a list of parsed git urls of provided git miniapps
-  const gitMiniAppsParsedUrls: Array<[
-    PackagePath,
-    gh.Result | null
-  ]> = gitMiniApps.map(m => [m, gh(m.fullPath)])
+  // Build a list of tuple of parsed git urls of supplied git miniapps
+  const remainingSuppliedGitMiniApps: Array<[
+    string /* host:repo */,
+    PackagePath /* git packagepath */
+  ]> = gitMiniApps.map(m => [
+    `${gh(m.fullPath)?.hostname}:${gh(m.fullPath)?.name}`,
+    m,
+  ])
 
   // Find matching git miniapps
-  const matchingGitMiniApps: Array<[
-    string,
-    gh.Result | null | undefined
+  const matchedGitMiniApps: Array<[
+    string /* host:repo */,
+    string /* package namge */
   ]> = _.intersectionWith(
-    gitParsedRepoUrlByPackageName,
-    gitMiniAppsParsedUrls,
-    ([, a], [, b]) => a?.hostname === b?.hostname && a?.name === b?.name
-    // TOD: prob want to make sure here that hostname/name is not null/undefined identical
+    remaininingLinkedMiniAppsWithGitRepo,
+    remainingSuppliedGitMiniApps,
+    ([a], [b]) => a === b
   )
-  // Add all matching linked git miniapps local path to the final list of
-  // miniapps to start
-  for (const [matchingGitMiniApp] of matchingGitMiniApps) {
-    const parsedUrl = _.find(
-      gitParsedRepoUrlByPackageName,
-      ([name]) => name === matchingGitMiniApp
-    )![1]
-    const pkg = _.find(
-      gitMiniAppsParsedUrls,
-      ([, pUrl]) =>
-        pUrl?.hostname === parsedUrl?.hostname && pUrl?.name === parsedUrl?.name
-    )![0]
-    startMiniApps.push({
-      linkedPkg: PackagePath.fromString(miniAppsLinks[matchingGitMiniApp]),
-      pkg,
-    })
-    _.remove(gitMiniAppsParsedUrls, ([pkgPath]) => pkgPath === pkg)
-  }
-  // Remove matches from the array containing unmatched linked miniapps,
-  // now that they have been matched
-  _.remove(unmatchedLinkedMiniApps, (unmatchedPkgName: string) =>
-    _.some(
-      matchingGitMiniApps,
-      ([matchedPkgName]) => matchedPkgName === unmatchedPkgName
+
+  // Add the matched git miniapps to the list of start miniapps
+  for (const matchedGitMiniApp of matchedGitMiniApps) {
+    const linkedPkg = PackagePath.fromString(
+      miniAppsLinks[matchedGitMiniApp[1]]
     )
-  )
+    startMiniApps.push({
+      linkedPkg,
+      name: linkedPkg.name,
+      pkg: remainingSuppliedGitMiniApps.find(
+        ([x]) => x === matchedGitMiniApp[0]
+      )![1],
+    })
+    // Remove the matched git miniapp from the list of remaining
+    // supplied git miniapps now that they have been matched
+    _.remove(remainingSuppliedGitMiniApps, ([x]) => x === matchedGitMiniApp[0])
+    _.remove(unmatchedLinkedMiniApps, x => x === linkedPkg.name)
+  }
 
   // At this point, if we still have unmatched miniapp(s) left with no
   // git repository url set in their package.json, and still have some
-  // git miniapp(s) which have not been matched to any linked miniapp
-  // we need help from the user to figure things out.
-  const gitMiniAppsWithoutGitRepository = gitParsedRepoUrlByPackageName.filter(
-    ([, gitUrl]) => !gitUrl
-  )
-
+  // supplied git miniapp(s) which have not been matched to any linked miniapp
+  // we need help from the user to figure out if some git miniapps are
+  // matching linked miniapps.
   if (
-    unmatchedLinkedMiniApps.length > 0 &&
-    gitMiniAppsWithoutGitRepository.length > 0
+    remainingSuppliedGitMiniApps.length > 0 &&
+    remainingLinkedMiniAppsWithoutGitRepo.length > 0
   ) {
     for (const pkgName of unmatchedLinkedMiniApps) {
-      if (gitMiniAppsWithoutGitRepository.length === 0) {
+      if (remainingLinkedMiniAppsWithoutGitRepo.length === 0) {
         break
       }
       const { userSelectedPackagePath } = await inquirer.prompt([
         <inquirer.Question>{
           choices: [
             { name: 'None', value: undefined },
-            ...gitMiniAppsParsedUrls.map(([pp]) => ({
+            ...remainingSuppliedGitMiniApps.map(([hostAndRepo, pp]) => ({
               name: pp.fullPath,
-              value: pp,
+              value: hostAndRepo,
             })),
           ],
-          message: `Select the git repository associated to linked miniapp ${pkgName} or 'None' if none apply`,
+          message: `Select the supplied git path corresponding to ${pkgName} package or 'None' if none apply`,
           name: 'userSelectedPackagePath',
           type: 'list',
         },
       ])
       if (userSelectedPackagePath) {
+        const linkedPkg = PackagePath.fromString(miniAppsLinks[pkgName])
+        startMiniApps.push({
+          linkedPkg,
+          name: linkedPkg.name,
+          pkg: remainingSuppliedGitMiniApps.find(
+            ([x]) => x === userSelectedPackagePath
+          )![1],
+        })
+        _.remove(
+          remainingSuppliedGitMiniApps,
+          ([x]) => x === userSelectedPackagePath
+        )
+        log.info(`Please consider adding a git repository entry in ${path.join(
+          linkedPkg.basePath,
+          'package.json'
+        )}
+Formatted as :
+  "repository": {
+    "type" : "git",
+    "url" : "https://[host]/[owner]/[repo].git"
+  }
+To avoid such a prompt in next runs.`)
       }
     }
   }
 
+  // Finally, if there is still some git miniapps left, it means that they
+  // have not been matched to any linked miniapp, so just add them to start
+  // as unlinked
+  if (remainingSuppliedGitMiniApps.length > 0) {
+    for (const remainingSuppliedGitMiniApp of remainingSuppliedGitMiniApps) {
+      startMiniApps.push({
+        pkg: remainingSuppliedGitMiniApp[1],
+      })
+    }
+  }
+
   const table = new Table({
-    colWidths: [40, 40, 40],
-    head: ['Package Name', 'Provided as', 'Local path link'],
+    head: ['Supplied package path', 'Resolved package name', 'Local link path'],
   })
-  for (const plugin of plugins) {
-    table.push([plugin.name, plugin.version])
+  for (const startMiniApp of startMiniApps) {
+    table.push([
+      startMiniApp.pkg.fullPath,
+      startMiniApp.name || 'UNKNOWN',
+      startMiniApp.linkedPkg?.fullPath || 'UNLINKED',
+    ])
   }
   log.info(table.toString())
 
@@ -352,7 +390,7 @@ export const commandHandler = async ({
     launchArgs,
     launchEnvVars,
     launchFlags,
-    miniapps: startMiniApps,
+    miniapps: startMiniApps.map(x => x.linkedPkg || x.pkg),
     packageName,
     port,
   })

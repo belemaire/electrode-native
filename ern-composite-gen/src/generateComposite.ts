@@ -217,8 +217,8 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
       path.join(outDir, 'node_modules')
     )
     let allNativeModules: PackagePath[] = [
-      ...tlNativeDependencies.thirdPartyInManifest.map(t => t.packagePath),
-      ...tlNativeDependencies.thirdPartyNotInManifest.map(t => t.packagePath),
+      ...tlNativeDependencies.thirdPartyInManifest,
+      ...tlNativeDependencies.thirdPartyNotInManifest,
     ]
 
     // List all native modules used by linked MiniApps
@@ -227,19 +227,20 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
         path.join(linkedMiniApp.basePath, 'node_modules')
       )
       const nativeModules = [
-        ...nativeDependencies.thirdPartyInManifest.map(t => t.packagePath),
-        ...nativeDependencies.thirdPartyNotInManifest.map(t => t.packagePath),
+        ...nativeDependencies.thirdPartyInManifest,
+        ...nativeDependencies.thirdPartyNotInManifest,
       ]
       allNativeModules.push(...nativeModules)
     }
 
     // Dedupe native modules array (based on name)
-    allNativeModules = _.uniqWith(
-      allNativeModules,
-      (a, b) => a.basePath === b.basePath
-    )
+    allNativeModules = _.uniqWith(allNativeModules, (a, b) => a.name === b.name)
     log.trace(`allNativeModules: ${allNativeModules}`)
     extraJsDependencies.push(...allNativeModules)
+
+    const extraJsPackages = extraJsDependencies.map(p =>
+      PackagePath.fromString(`${p.name}@${p.version}`)
+    )
 
     const miniAppPathByPackageName: Array<[string, string]> = []
     const linkedMiniAppsPackages: string[] = []
@@ -260,22 +261,23 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
       outDir,
     })
 
-    let depsToInstall
+    let depsToInstall: PackagePath[]
     if (reuseCompositeDir) {
       const existingDependencies = Object.keys(
-        compositePJson.dependencies
+        compositePJson.dependencies || []
       ).map(k =>
         PackagePath.fromString(`${k}@${compositePJson.dependencies[k]}`)
       )
-      depsToInstall = _.difference(
-        extraJsDependencies.map(p => p.fullPath),
-        existingDependencies.map(p => p.fullPath)
+      depsToInstall = _.differenceBy(
+        extraJsPackages,
+        existingDependencies,
+        'fullPath'
       )
     } else {
       depsToInstall = [
         PackagePath.fromString('ern-bundle-store-metro-asset-plugin'),
         PackagePath.fromString('react@16.8.6'),
-        ...extraJsDependencies,
+        ...extraJsPackages,
       ]
     }
 
@@ -303,15 +305,15 @@ export async function generateStartComposite(config: CompositeGeneratorConfig) {
         ...allNativeModules.map(
           n =>
             new RegExp(
-              `.*${path.normalize(m.basePath)}/node_modules/${n.basePath}/.*`
+              `.*${path.normalize(m.basePath)}/node_modules/${n.name!}/.*`
             )
         )
       )
     })
 
-    const extraNodeModules = {}
+    const extraNodeModules: { [k: string]: string } = {}
     allNativeModules.forEach(m => {
-      extraNodeModules[m.basePath] = `${outDir}/node_modules/${m.basePath}`
+      extraNodeModules[m.name!] = `${outDir}/node_modules/${m.name}`
     })
 
     const watchFolders = linkedMiniApps.map(m => m.basePath)

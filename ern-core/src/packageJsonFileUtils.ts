@@ -47,5 +47,5 @@ export function getPathToPackageJson(p: string) {
   if (!fs.statSync(p).isDirectory) {
     throw new Error(`${p} is not a directory`)
   }
-  return path.join(p, PACKAGE_JSON_FILENAME)
+  return fs.realpathSync(path.join(p, PACKAGE_JSON_FILENAME))
 }
