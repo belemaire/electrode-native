@@ -477,10 +477,18 @@ export default class AndroidGenerator implements ContainerGenerator {
       shell.pushd(workingDir)
       await yarn.init()
       await yarn.add(PackagePath.fromString(`hermes-engine@${hermesVersion}`))
+      let hermesBuild = 'release'
+      if (config.androidConfig && config.androidConfig.hermesBuild) {
+        if (config.androidConfig.hermesBuild === 'debug') {
+          hermesBuild = 'debug'
+        } else {
+          hermesBuild = 'release'
+        }
+      }
       const hermesAarPath = path.resolve(
-        `./node_modules/hermes-engine/android/hermes-release.aar`
+        `./node_modules/hermes-engine/android/hermes-${hermesBuild}.aar`
       )
-      return new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         const unzipper = new DecompressZip(hermesAarPath)
         const unzipOutDir = createTmpDir()
         const containerJniLibsPath = path.join(
@@ -495,6 +503,24 @@ export default class AndroidGenerator implements ContainerGenerator {
         })
         unzipper.extract({ path: unzipOutDir })
       })
+      /* const hermesCppRuntimePath = path.resolve(
+        `./node_modules/hermes-engine/android/hermes-cppruntime-${hermesBuild}.aar`
+      )
+      return new Promise((resolve, reject) => {
+        const unzipper = new DecompressZip(hermesCppRuntimePath)
+        const unzipOutDir = createTmpDir()
+        const containerJniLibsPath = path.join(
+          config.outDir,
+          'lib/src/main/jniLibs'
+        )
+        const unzippedJniPath = path.join(unzipOutDir, 'jni', '*')
+        unzipper.on('error', (err: any) => reject(err))
+        unzipper.on('extract', () => {
+          shell.cp('-Rf', unzippedJniPath, containerJniLibsPath)
+          resolve()
+        })
+        unzipper.extract({ path: unzipOutDir })
+      })*/
     } finally {
       shell.popd()
     }

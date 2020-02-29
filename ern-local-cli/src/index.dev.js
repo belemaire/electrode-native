@@ -7,6 +7,7 @@ const workspacePath = path.resolve(__dirname, '../..')
 
 process.env.ERN_ENV = 'development'
 process.env.TS_NODE_PROJECT = path.resolve(workspacePath, 'tsconfig.json')
+process.env.TS_NODE_CWD = workspacePath
 
 let tsNodeSourceMapSupportModule
 Module._load = function(file, parent) {

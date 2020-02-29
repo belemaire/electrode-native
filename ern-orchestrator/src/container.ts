@@ -18,7 +18,6 @@ import {
 } from 'ern-core'
 import { getActiveCauldron } from 'ern-cauldron-api'
 import _ from 'lodash'
-import semver from 'semver'
 import * as constants from './constants'
 
 // Run container generator locally, without relying on the Cauldron, given a list of miniapp packages
