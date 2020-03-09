@@ -4,17 +4,15 @@ import _ from 'lodash'
 import { Argv } from 'yargs'
 import fs from 'fs-extra'
 import path from 'path'
-import Table from 'cli-table'
-import logSymbols from 'log-symbols'
 
-export const command = 'status'
-export const desc = 'Git status of miniapps'
+export const command = 'checkout [branch]'
+export const desc = 'Git checkout a specific branch for all miniapps'
 
 export const builder = (argv: Argv) => {
   return argv.epilog(epilog(exports))
 }
 
-export const commandHandler = async () => {
+export const commandHandler = async ({ branch }: { branch: string }) => {
   const miniappsDirs = []
   const pathToMiniApps = path.join(process.cwd(), 'miniapps')
   for (const file of fs.readdirSync(pathToMiniApps)) {
@@ -24,21 +22,9 @@ export const commandHandler = async () => {
     }
   }
 
-  const table = new Table({
-    head: ['MiniApp', 'Branch', 'Ahead?', 'Behind?', 'Dirty?'],
-  })
-
   for (const m of miniappsDirs) {
-    const sr = await gitCli(m).status()
-    table.push([
-      path.basename(m),
-      sr.current,
-      sr.ahead > 0 ? logSymbols.success : '',
-      sr.behind > 0 ? logSymbols.success : '',
-      sr.files.length > 0 ? logSymbols.success : '',
-    ])
+    await gitCli(m).checkout(branch)
   }
-  kax.raw(table.toString())
 }
 
 export const handler = tryCatchWrap(commandHandler)

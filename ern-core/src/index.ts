@@ -54,6 +54,7 @@ export * from './config'
 export * from './gitApply'
 export * from './createProxyAgent'
 export * from './bugsnagUpload'
+export * from './alignPackageJson'
 
 export const config = _config
 export const Platform = _Platform

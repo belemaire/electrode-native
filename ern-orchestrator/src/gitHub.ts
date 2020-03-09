@@ -1,4 +1,10 @@
-import { log, PackagePath, GitHubApi, manifest } from 'ern-core'
+import {
+  log,
+  PackagePath,
+  GitHubApi,
+  alignPackageJson,
+  AlignedDependency,
+} from 'ern-core'
 import { getActiveCauldron } from 'ern-cauldron-api'
 
 export async function getGitHubApi({
@@ -170,11 +176,11 @@ export async function alignPackageJsonOnManifest({
       path: 'package.json',
     })
     const jsonRes: any = JSON.parse(res)
-    const wasUpdated = await updatePackageJson({
+    const alignedDeps: AlignedDependency[] = await alignPackageJson({
       manifestId,
       packageJson: jsonRes,
     })
-    if (!wasUpdated) {
+    if (alignedDeps.length === 0) {
       log.info(
         `All dependencies of ${pkg.toString()} are already aligned. Skipping.`
       )
@@ -189,39 +195,6 @@ export async function alignPackageJsonOnManifest({
       log.info(`Successfully aligned dependencies of ${pkg.basePath}.`)
     }
   }
-}
-
-async function updatePackageJson({
-  manifestId,
-  packageJson,
-}: {
-  manifestId: string
-  packageJson: any
-}): Promise<boolean> {
-  let wasUpdated = false
-
-  const manifestDependencies = await manifest.getJsAndNativeDependencies({
-    manifestId,
-  })
-
-  for (const manifestDependency of manifestDependencies) {
-    if (packageJson.dependencies[manifestDependency.basePath]) {
-      const dependencyManifestVersion = manifestDependency.version
-      const localDependencyVersion =
-        packageJson.dependencies[manifestDependency.basePath]
-      if (dependencyManifestVersion !== localDependencyVersion) {
-        log.info(
-          `${manifestDependency.basePath} : ${localDependencyVersion} => ${dependencyManifestVersion}`
-        )
-        packageJson.dependencies[
-          manifestDependency.basePath
-        ] = dependencyManifestVersion
-        wasUpdated = true
-      }
-    }
-  }
-
-  return wasUpdated
 }
 
 function extractGitData(p: PackagePath) {
