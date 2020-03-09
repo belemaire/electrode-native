@@ -19,6 +19,7 @@ import {
 import { Argv } from 'yargs'
 import path from 'path'
 import untildify from 'untildify'
+import qrcode from 'qrcode-terminal'
 
 export const command = 'upload'
 export const desc = 'Upload a bundle to a store'
@@ -30,6 +31,11 @@ export const builder = (argv: Argv) => {
       type: 'string',
     })
     .coerce('baseComposite', d => PackagePath.fromString(d))
+    .option('compositeDir', {
+      describe: 'Existing composite directory',
+      type: 'string',
+    })
+    .coerce('compositeDir', d => untildify(d))
     .option('descriptor', {
       alias: 'd',
       describe: 'Full native application descriptor',
@@ -82,6 +88,7 @@ export const builder = (argv: Argv) => {
 
 export const commandHandler = async ({
   baseComposite,
+  compositeDir,
   descriptor,
   extraJsDependencies,
   fromGitBranches,
@@ -93,6 +100,7 @@ export const commandHandler = async ({
   resetCache,
 }: {
   baseComposite?: PackagePath
+  compositeDir?: string
   descriptor?: AppVersionDescriptor
   extraJsDependencies?: PackagePath[]
   fromGitBranches?: boolean
@@ -130,8 +138,8 @@ export const commandHandler = async ({
     // Full native application descriptor was not provided.
     // Ask the user to select a completeNapDescriptor from a list
     // containing all the native applications versions in the cauldron
-    // Not needed if miniapps are directly provided
-    if (!descriptor && !miniapps) {
+    // Not needed if miniapps are directly provided or compositeDir is provided
+    if (!descriptor && !miniapps && !compositeDir) {
       descriptor = await askUserToChooseANapDescriptorFromCauldron()
     }
 
@@ -171,18 +179,20 @@ export const commandHandler = async ({
       resolutions = compositeGenConfig && compositeGenConfig.resolutions
     }
 
-    const compositeDir = createTmpDir()
-    await kax.task('Generating Composite').run(
-      generateComposite({
-        baseComposite,
-        extraJsDependencies,
-        jsApiImplDependencies: jsApiImpls,
-        miniApps: miniapps!,
-        outDir: compositeDir,
-        pathToYarnLock,
-        resolutions,
-      })
-    )
+    if (!compositeDir) {
+      compositeDir = createTmpDir()
+      await kax.task('Generating Composite').run(
+        generateComposite({
+          baseComposite,
+          extraJsDependencies,
+          jsApiImplDependencies: jsApiImpls,
+          miniApps: miniapps!,
+          outDir: compositeDir,
+          pathToYarnLock,
+          resolutions,
+        })
+      )
+    }
 
     for (const curPlatform of platforms) {
       const outDir = createTmpDir()
@@ -205,6 +215,7 @@ export const commandHandler = async ({
           engine.upload({ bundlePath, platform: curPlatform, sourceMapPath })
         )
       log.info(`Successfully uploaded ${curPlatform} bundle [id: ${bundleId}]`)
+      qrcode.generate(bundleId, { small: true })
     }
   }
 }
