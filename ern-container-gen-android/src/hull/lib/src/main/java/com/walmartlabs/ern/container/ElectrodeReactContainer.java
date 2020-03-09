@@ -54,6 +54,7 @@ import com.walmartlabs.electrode.reactnative.bridge.helpers.Logger;
 
 import com.facebook.react.devsupport.interfaces.DevOptionHandler;
 import com.walmartlabs.ern.container.devassist.ErnDevSettingsActivity;
+import com.walmartlabs.ern.container.devassist.BundleStoreScannerActivity;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -197,6 +198,16 @@ public class ElectrodeReactContainer {
                 @Override
                 public void onOptionSelected() {
                     Intent intent = new Intent(application, ErnDevSettingsActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    application.startActivity(intent);
+                }
+            });
+
+             // Add Bundle Store scanner item to React Native dev menu
+            getReactInstanceManager().getDevSupportManager().addCustomDevOption("Install Bundle from QR Code", new DevOptionHandler() {
+                @Override
+                public void onOptionSelected() {
+                    Intent intent = new Intent(application, BundleStoreScannerActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     application.startActivity(intent);
                 }
