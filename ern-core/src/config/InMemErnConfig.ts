@@ -1,4 +1,6 @@
 import { ErnConfig } from './ErnConfig'
+import path from 'path'
+import log from '../log'
 
 export class InMemErnConfig implements ErnConfig {
   private readonly obj: any
