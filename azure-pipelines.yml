@@ -1,6 +1,3 @@
-trigger:
-  - master
-
 schedules:
   - cron: '00 04 * * *'
     displayName: Daily Build
@@ -17,23 +14,6 @@ variables:
   CI_BUILD_URL: $(Build.BuildUri)
 
 stages:
-  - stage: UnitTests
-    jobs:
-      - job: Windows
-        pool:
-          vmImage: 'windows-latest'
-        steps:
-          - template: azure/templates/unit-tests.yml
-      - job: macOS
-        pool:
-          vmImage: 'macOS-10.15'
-        steps:
-          - template: azure/templates/unit-tests.yml
-      - job: Linux
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-          - template: azure/templates/unit-tests.yml
   - stage: SystemTests
     dependsOn: []
     condition: eq(variables['Build.Reason'], 'Schedule')
