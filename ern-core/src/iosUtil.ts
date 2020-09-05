@@ -17,6 +17,7 @@ import { gitApply } from './gitApply';
 import semver from 'semver';
 import readDir = require('fs-readdir-recursive');
 import glob from 'glob';
+import { logErrorAndExitIfNotSatisfied } from 'ern-local-cli/dist/lib';
 
 export async function fillProjectHull(
   pathSpec: {
@@ -424,6 +425,13 @@ export async function fillProjectHull(
         }
 
         if (ignorePodSpec && reExec) {
+          const p = path.join(
+            pathSpec.outputDir,
+            'node_modules',
+            reExec[1],
+            '**/*.podspec',
+          );
+          log.error(`path to plugin is ${p}`);
           const podspecs: string[] = await new Promise((resolve, reject) => {
             glob(
               path.join(
@@ -442,6 +450,7 @@ export async function fillProjectHull(
             );
           });
           for (const podspecFile of podspecs) {
+            log.error(`unlinking ${podspecFile}`);
             fs.unlinkSync(podspecFile);
           }
         }
