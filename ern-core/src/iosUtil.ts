@@ -25,6 +25,7 @@ export async function fillProjectHull(
     outputDir: string;
   },
   projectSpec: {
+    deploymentTarget?: string;
     projectName: string;
     nodeModulesRelativePath?: string;
   },
@@ -41,7 +42,7 @@ export async function fillProjectHull(
     shell.cp('-R', pathSpec.projectHullDir, pathSpec.outputDir);
 
     if (mustacheView) {
-      log.debug(`iOS: reading template files to be rendered for plugins`);
+      log.debug(`Applying mustache template to Container`);
       const a = path.join(pathSpec.outputDir, 'ElectrodeContainer');
       const b = path.join(pathSpec.outputDir, 'Config');
       const files = [
@@ -62,6 +63,7 @@ export async function fillProjectHull(
         }
       }
     }
+
     const projectPath = path.join(
       pathSpec.outputDir,
       `${projectSpec.projectName}.xcodeproj`,
@@ -460,6 +462,7 @@ export async function fillProjectHull(
             (acc, cur) => `${acc}\n  ${cur}`,
             '',
           ),
+          iosDeploymentTarget: projectSpec.deploymentTarget,
           nodeModulesRelativePath:
             projectSpec.nodeModulesRelativePath || './node_modules',
           projectName: projectSpec.projectName,
