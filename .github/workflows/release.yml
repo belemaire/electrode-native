@@ -1,0 +1,16 @@
+name: Release new Electrode Native version
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release-ern:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Release new Electrode Native version
+        run: |
+          yarn install
+          yarn build
