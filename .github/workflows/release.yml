@@ -12,5 +12,6 @@ jobs:
       - uses: actions/checkout@v2
       - name: Release new Electrode Native version
         run: |
+          cat lerna.json | jq .version
           yarn install
           yarn build
